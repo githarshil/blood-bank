@@ -60,7 +60,7 @@ app.use((req, res, next) => {
   next();
 });
 
-const { query: dbQuery } = require("./db");
+const { query: dbQuery, poolConfig } = require("./db");
 
 const healthHandler = async (req, res) => {
   let dbConnected = false;
@@ -80,8 +80,10 @@ const healthHandler = async (req, res) => {
       : "API is up but database is not connected",
     dbConnected,
     dbError,
-    database: process.env.DB_NAME || null,
-    host: process.env.DB_HOST || process.env.MYSQLHOST ? "***configured***" : "missing",
+    database: poolConfig.database,
+    host: poolConfig.host,
+    port: poolConfig.port,
+    user: poolConfig.user,
     envKeys: Object.keys(process.env).filter(k => !/pass|key|token|secret/i.test(k)),
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || "development",

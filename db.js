@@ -9,6 +9,8 @@
 const mysql = require("mysql2/promise");
 require("dotenv").config();
 
+const isServerless = process.env.VERCEL === "1";
+
 const poolConfig = {
   host: process.env.DB_HOST || "localhost",
   user: process.env.DB_USER || "root",
@@ -16,20 +18,33 @@ const poolConfig = {
   database: process.env.DB_NAME || "bloodbankdb",
   port: Number(process.env.DB_PORT) || 3306,
   waitForConnections: true,
-  connectionLimit: 5,
+  connectionLimit: isServerless ? 1 : 5,
   queueLimit: 0,
-  connectTimeout: 15000,
-  enableKeepAlive: true,
-  keepAliveInitialDelay: 0,
+  connectTimeout: 10000,
+  enableKeepAlive: !isServerless,
   decimalNumbers: true,
 };
 
-// Cloud MySQL (Aiven, Railway, etc.) usually requires SSL
 if (process.env.DB_SSL === "true") {
   poolConfig.ssl = { rejectUnauthorized: false };
 }
 
 const pool = mysql.createPool(poolConfig);
+
+/** Run query with timeout (prevents serverless hang) */
+const query = async (sql, params = []) => {
+  const timeoutMs = 10000;
+  const result = await Promise.race([
+    pool.query(sql, params),
+    new Promise((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`Database query timed out after ${timeoutMs}ms`)),
+        timeoutMs,
+      ),
+    ),
+  ]);
+  return result;
+};
 
 // Test connection on startup
 const testConnection = async () => {
@@ -48,5 +63,6 @@ const testConnection = async () => {
 // Export pool and test function
 module.exports = {
   pool,
+  query,
   testConnection,
 };

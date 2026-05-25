@@ -60,14 +60,14 @@ app.use((req, res, next) => {
   next();
 });
 
-const { pool } = require("./db");
+const { query: dbQuery } = require("./db");
 
 const healthHandler = async (req, res) => {
   let dbConnected = false;
   let dbError = null;
 
   try {
-    await pool.query("SELECT 1");
+    await dbQuery("SELECT 1");
     dbConnected = true;
   } catch (err) {
     dbError = err.message;

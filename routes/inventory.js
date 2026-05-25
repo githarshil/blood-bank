@@ -6,7 +6,7 @@
 
 const express = require("express");
 const router = express.Router();
-const { pool } = require("../db");
+const { query } = require("../db");
 
 const getStatusColor = (quantity) => {
   if (quantity >= 5) return { color: "green", level: "SAFE" };
@@ -33,18 +33,18 @@ router.get("/", async (req, res) => {
     const { bloodType, blood_group } = req.query;
     const filterGroup = blood_group || bloodType;
 
-    let query =
+    let sql =
       "SELECT * FROM blood_inventory WHERE expiry_date > CURDATE()";
     const params = [];
 
     if (filterGroup) {
-      query += " AND blood_group = ?";
+      sql += " AND blood_group = ?";
       params.push(filterGroup);
     }
 
-    query += " ORDER BY blood_group ASC, expiry_date ASC";
+    sql += " ORDER BY blood_group ASC, expiry_date ASC";
 
-    const [inventory] = await pool.query(query, params);
+    const [inventory] = await query(sql, params);
 
     const inventoryWithColors = inventory.map((item) => {
       const mapped = mapInventoryRow(item);

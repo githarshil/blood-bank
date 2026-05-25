@@ -7,10 +7,16 @@ function Dashboard() {
   const [inventory, setInventory] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [loadingHint, setLoadingHint] = useState('');
 
   const fetchInventory = async () => {
+    const hintTimer = setTimeout(() => {
+      setLoadingHint('Still connecting… First load from Vercel to Railway can take 10–15 seconds.');
+    }, 4000);
+
     try {
       setLoading(true);
+      setLoadingHint('');
       setError(null);
       const response = await api.get('/api/inventory');
       
@@ -46,7 +52,9 @@ function Dashboard() {
       }
       setError(message);
     } finally {
+      clearTimeout(hintTimer);
       setLoading(false);
+      setLoadingHint('');
     }
   };
 
@@ -90,19 +98,26 @@ function Dashboard() {
 
       {/* Loading Skeletons */}
       {loading && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-          {BLOOD_GROUPS.map((g, idx) => (
-            <div key={idx} className="h-44 bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex flex-col justify-between animate-pulse">
-              <div className="flex justify-between items-center">
-                <div className="w-12 h-6 bg-slate-200 rounded"></div>
-                <div className="w-20 h-5 bg-slate-200 rounded-full"></div>
+        <div className="space-y-4">
+          {loadingHint && (
+            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
+              {loadingHint}
+            </p>
+          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+            {BLOOD_GROUPS.map((g, idx) => (
+              <div key={idx} className="h-44 bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex flex-col justify-between animate-pulse">
+                <div className="flex justify-between items-center">
+                  <div className="w-12 h-6 bg-slate-200 rounded"></div>
+                  <div className="w-20 h-5 bg-slate-200 rounded-full"></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="w-16 h-8 bg-slate-200 rounded"></div>
+                  <div className="w-28 h-4 bg-slate-200 rounded"></div>
+                </div>
               </div>
-              <div className="space-y-2">
-                <div className="w-16 h-8 bg-slate-200 rounded"></div>
-                <div className="w-28 h-4 bg-slate-200 rounded"></div>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
 

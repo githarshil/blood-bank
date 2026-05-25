@@ -6,7 +6,7 @@
 
 const express = require("express");
 const router = express.Router();
-const { query } = require("../db");
+const { pool, query } = require("../db");
 
 const getStatusColor = (quantity) => {
   if (quantity >= 5) return { color: "green", level: "SAFE" };

@@ -11,12 +11,7 @@ require("dotenv").config();
 
 const isServerless = process.env.VERCEL === "1";
 
-const poolConfig = {
-  host: process.env.DB_HOST || "localhost",
-  user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD || "",
-  database: process.env.DB_NAME || "bloodbankdb",
-  port: Number(process.env.DB_PORT) || 3306,
+let poolConfig = {
   waitForConnections: true,
   connectionLimit: isServerless ? 1 : 5,
   queueLimit: 0,
@@ -25,7 +20,36 @@ const poolConfig = {
   decimalNumbers: true,
 };
 
-if (process.env.DB_SSL === "true") {
+// Check if a unified connection URL is provided (e.g. MYSQL_URL or DATABASE_URL)
+const connectionUrl = process.env.MYSQL_URL || process.env.DATABASE_URL;
+
+if (connectionUrl) {
+  try {
+    // Parse connection URL (mysql://user:pass@host:port/db)
+    const url = new URL(connectionUrl);
+    poolConfig.host = url.hostname;
+    poolConfig.port = Number(url.port) || 3306;
+    poolConfig.user = url.username;
+    poolConfig.password = decodeURIComponent(url.password);
+    poolConfig.database = url.pathname.replace(/^\//, "");
+  } catch (err) {
+    console.error("Failed to parse MYSQL_URL/DATABASE_URL:", err.message);
+  }
+}
+
+// Fallback / overrides using DB_* or MYSQL* variables
+poolConfig.host = process.env.DB_HOST || process.env.MYSQLHOST || poolConfig.host || "localhost";
+poolConfig.port = Number(process.env.DB_PORT || process.env.MYSQLPORT) || poolConfig.port || 3306;
+poolConfig.user = process.env.DB_USER || process.env.MYSQLUSER || poolConfig.user || "root";
+poolConfig.password = process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || poolConfig.password || "";
+poolConfig.database = process.env.DB_NAME || process.env.MYSQLDATABASE || poolConfig.database || "bloodbankdb";
+
+// Auto-enable SSL for any remote database (when host is not localhost) or when explicitly requested
+if (
+  process.env.DB_SSL === "true" ||
+  process.env.MYSQL_SSL === "true" ||
+  (poolConfig.host && poolConfig.host !== "localhost" && poolConfig.host !== "127.0.0.1")
+) {
   poolConfig.ssl = { rejectUnauthorized: false };
 }
 

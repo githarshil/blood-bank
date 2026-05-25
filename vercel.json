@@ -5,9 +5,13 @@
   "buildCommand": "cd blood-bank-frontend && npm run build",
   "outputDirectory": "blood-bank-frontend/dist",
   "framework": null,
+  "functions": {
+    "api/**/*.js": {
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api" },
-    { "source": "/health", "destination": "/api" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/health", "destination": "/api/health" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }

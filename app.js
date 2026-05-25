@@ -16,6 +16,19 @@ const alertRoutes = require("./routes/alerts");
 
 const app = express();
 
+// Vercel serverless may strip /api prefix — restore it for Express routes
+app.use((req, res, next) => {
+  const path = req.path || "";
+  if (
+    !path.startsWith("/api") &&
+    path !== "/health" &&
+    /^\/(donors|donations|inventory|requests|reports|alerts)/.test(path)
+  ) {
+    req.url = `/api${req.url}`;
+  }
+  next();
+});
+
 // CORS — local, Render, Vercel production & preview URLs
 const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:3000")
   .split(",")
@@ -47,7 +60,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get("/health", (req, res) => {
+const healthHandler = (req, res) => {
   res.status(200).json({
     status: "OK",
     message: "Blood Bank API is running",
@@ -55,7 +68,10 @@ app.get("/health", (req, res) => {
     environment: process.env.NODE_ENV || "development",
     platform: process.env.VERCEL ? "vercel" : "node",
   });
-});
+};
+
+app.get("/health", healthHandler);
+app.get("/api/health", healthHandler);
 
 app.use("/api/donors", donorRoutes);
 app.use("/api/donations", donationRoutes);

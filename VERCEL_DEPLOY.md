@@ -116,7 +116,8 @@ Use `.env` in project root with Railway/MySQL credentials for local API testing.
 | API 404 on Vercel | Ensure `vercel.json` rewrites exist; redeploy |
 | CORS error | Add your URL to `CORS_ORIGIN` or use same Vercel domain |
 | DB connection error | Check Railway public networking; verify `DB_*` vars |
-| Frontend calls `localhost` | Remove `VITE_API_URL` from Vercel env; redeploy |
+| Frontend calls `localhost` | **Delete** `VITE_API_URL` from Vercel env if it contains localhost; redeploy |
+| `Network Error` on Dashboard | Fix API routing (use latest `api/[...path].js`); confirm `/api/health` works in browser |
 | Cold start slow | First API request after idle may take 5–15s (serverless) |
 | `FUNCTION_INVOCATION_FAILED` | Check Vercel **Functions** logs; usually bad `DB_PASSWORD` |
 

@@ -1,16 +1,23 @@
 import axios from 'axios';
 
-// Vercel: leave VITE_API_URL empty to use same-origin /api routes
-const apiBaseUrl =
-  import.meta.env.VITE_API_URL !== undefined && import.meta.env.VITE_API_URL !== ''
-    ? import.meta.env.VITE_API_URL
-    : import.meta.env.PROD
-      ? ''
-      : 'http://localhost:3001';
+function getApiBaseUrl() {
+  const envUrl = import.meta.env.VITE_API_URL?.trim();
+
+  // Never use localhost in production builds
+  if (envUrl && !envUrl.includes('localhost')) {
+    return envUrl.replace(/\/$/, '');
+  }
+
+  if (import.meta.env.PROD) {
+    return ''; // same-origin: /api/... on Vercel
+  }
+
+  return 'http://localhost:3001';
+}
 
 const api = axios.create({
-  baseURL: apiBaseUrl,
-  timeout: 15000,
+  baseURL: getApiBaseUrl(),
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json'
   }

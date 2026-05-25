@@ -35,7 +35,16 @@ function Dashboard() {
       }
     } catch (err) {
       console.error(err);
-      setError(err.message || 'Something went wrong while connecting to the API server.');
+      let message = err.message || 'Something went wrong while connecting to the API server.';
+      if (err.code === 'ERR_NETWORK') {
+        message =
+          'Network Error — API unreachable. On Vercel: remove VITE_API_URL if set to localhost, redeploy, and set DB_* env vars. Test /api/health in the browser.';
+      } else if (err.code === 'ECONNABORTED') {
+        message = 'Request timed out — API or database may be slow to wake up. Try again.';
+      } else if (err.response?.data?.error) {
+        message = err.response.data.error;
+      }
+      setError(message);
     } finally {
       setLoading(false);
     }

@@ -38,7 +38,7 @@ function Dashboard() {
       let message = err.message || 'Something went wrong while connecting to the API server.';
       if (err.code === 'ERR_NETWORK') {
         message =
-          'Network Error — API unreachable. On Vercel: remove VITE_API_URL if set to localhost, redeploy, and set DB_* env vars. Test /api/health in the browser.';
+          'Network Error — open /api/health and /api/inventory in the browser. If health shows dbConnected:false, add DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME=railway on Vercel and redeploy.';
       } else if (err.code === 'ECONNABORTED') {
         message = 'Request timed out — API or database may be slow to wake up. Try again.';
       } else if (err.response?.data?.error) {

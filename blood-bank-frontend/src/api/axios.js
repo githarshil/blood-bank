@@ -1,15 +1,23 @@
 import axios from 'axios';
 
 function getApiBaseUrl() {
-  const envUrl = import.meta.env.VITE_API_URL?.trim();
+  // In the browser on Vercel, always use the current site (avoids stale localhost in builds)
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    const isLocalhost =
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1';
+    if (!isLocalhost) {
+      return window.location.origin;
+    }
+  }
 
-  // Never use localhost in production builds
+  const envUrl = import.meta.env.VITE_API_URL?.trim();
   if (envUrl && !envUrl.includes('localhost')) {
     return envUrl.replace(/\/$/, '');
   }
 
   if (import.meta.env.PROD) {
-    return ''; // same-origin: /api/... on Vercel
+    return '';
   }
 
   return 'http://localhost:3001';

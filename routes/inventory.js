@@ -44,9 +44,7 @@ router.get("/", async (req, res) => {
 
     query += " ORDER BY blood_group ASC, expiry_date ASC";
 
-    const connection = await pool.getConnection();
-    const [inventory] = await connection.query(query, params);
-    connection.release();
+    const [inventory] = await pool.query(query, params);
 
     const inventoryWithColors = inventory.map((item) => {
       const mapped = mapInventoryRow(item);

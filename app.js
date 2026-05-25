@@ -60,10 +60,28 @@ app.use((req, res, next) => {
   next();
 });
 
-const healthHandler = (req, res) => {
-  res.status(200).json({
-    status: "OK",
-    message: "Blood Bank API is running",
+const { pool } = require("./db");
+
+const healthHandler = async (req, res) => {
+  let dbConnected = false;
+  let dbError = null;
+
+  try {
+    await pool.query("SELECT 1");
+    dbConnected = true;
+  } catch (err) {
+    dbError = err.message;
+  }
+
+  res.status(dbConnected ? 200 : 503).json({
+    status: dbConnected ? "OK" : "DEGRADED",
+    message: dbConnected
+      ? "Blood Bank API is running"
+      : "API is up but database is not connected",
+    dbConnected,
+    dbError,
+    database: process.env.DB_NAME || null,
+    host: process.env.DB_HOST ? "***configured***" : "missing",
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || "development",
     platform: process.env.VERCEL ? "vercel" : "node",

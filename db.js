@@ -9,20 +9,26 @@
 const mysql = require("mysql2/promise");
 require("dotenv").config();
 
-// Create connection pool
-const pool = mysql.createPool({
+const poolConfig = {
   host: process.env.DB_HOST || "localhost",
   user: process.env.DB_USER || "root",
   password: process.env.DB_PASSWORD || "",
-  database: process.env.DB_NAME || "BloodBankDB",
-  port: process.env.DB_PORT || 3306,
+  database: process.env.DB_NAME || "bloodbankdb",
+  port: Number(process.env.DB_PORT) || 3306,
   waitForConnections: true,
-  connectionLimit: 10, // Maximum connections in pool
+  connectionLimit: 10,
   queueLimit: 0,
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
-  decimalNumbers: true, // Convert DECIMAL to numbers instead of strings
-});
+  decimalNumbers: true,
+};
+
+// Cloud MySQL (Aiven, Railway, etc.) usually requires SSL
+if (process.env.DB_SSL === "true") {
+  poolConfig.ssl = { rejectUnauthorized: false };
+}
+
+const pool = mysql.createPool(poolConfig);
 
 // Test connection on startup
 const testConnection = async () => {

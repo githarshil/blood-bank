@@ -1,5 +1,5 @@
-import React from 'react';
-import { NavLink } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 
 function Sidebar() {
   const links = [
@@ -50,6 +50,43 @@ function Sidebar() {
     }
   ];
 
+  const location = useLocation();
+  const itemRefs = useRef([]);
+
+  // Find active index
+  const activeIndex = links.findIndex((link) => {
+    if (link.path === '/') {
+      return location.pathname === '/';
+    }
+    return location.pathname.startsWith(link.path);
+  });
+
+  const [indicatorStyle, setIndicatorStyle] = useState({ top: 0, height: 0, opacity: 0 });
+
+  useEffect(() => {
+    const updateIndicator = () => {
+      if (activeIndex !== -1 && itemRefs.current[activeIndex]) {
+        const activeEl = itemRefs.current[activeIndex];
+        setIndicatorStyle({
+          top: activeEl.offsetTop,
+          height: activeEl.offsetHeight,
+          opacity: 1,
+        });
+      } else {
+        setIndicatorStyle((prev) => ({ ...prev, opacity: 0 }));
+      }
+    };
+
+    // Run layout-dependent code inside requestAnimationFrame to ensure rendering is complete
+    const handle = requestAnimationFrame(updateIndicator);
+
+    window.addEventListener('resize', updateIndicator);
+    return () => {
+      cancelAnimationFrame(handle);
+      window.removeEventListener('resize', updateIndicator);
+    };
+  }, [activeIndex]);
+
   return (
     <div className="fixed top-0 left-0 w-64 h-full bg-slate-900 border-r border-slate-800 text-slate-300 flex flex-col z-30 shadow-lg">
       {/* Brand Logo Header */}
@@ -60,16 +97,29 @@ function Sidebar() {
       </div>
 
       {/* Nav Menu */}
-      <nav className="flex-1 px-4 py-6 space-y-1">
-        {links.map((link) => (
+      <nav className="flex-1 px-4 py-6 space-y-1 relative">
+        {/* Smooth sliding outline pill with a premium glowing border and custom delayed catch-up */}
+        <div
+          className="absolute left-4 right-4 border border-red-500 bg-red-950/20 rounded-xl pointer-events-none z-0"
+          style={{
+            top: `${indicatorStyle.top}px`,
+            height: `${indicatorStyle.height}px`,
+            opacity: indicatorStyle.opacity,
+            transition: 'top 380ms cubic-bezier(0.16, 1, 0.3, 1) 60ms, height 380ms cubic-bezier(0.16, 1, 0.3, 1) 60ms, opacity 200ms ease-out',
+            boxShadow: '0 0 12px rgba(239, 68, 68, 0.25), inset 0 0 6px rgba(239, 68, 68, 0.1)',
+          }}
+        />
+
+        {links.map((link, index) => (
           <NavLink
             key={link.path}
             to={link.path}
+            ref={(el) => (itemRefs.current[index] = el)}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
+              `flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl relative z-10 transition-colors duration-150 ${
                 isActive
-                  ? 'bg-red-700 text-white shadow-md shadow-red-900/20'
-                  : 'hover:bg-slate-800 hover:text-slate-100'
+                  ? 'text-white font-semibold'
+                  : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/40'
               }`
             }
           >

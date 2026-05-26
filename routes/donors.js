@@ -215,4 +215,41 @@ router.put("/:id", async (req, res) => {
   }
 });
 
+// DELETE /api/donors/:id
+router.delete("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const connection = await pool.getConnection();
+    // Delete associated donations first to satisfy foreign key constraints
+    await connection.query("DELETE FROM donation WHERE donor_id = ?", [id]);
+    
+    // Delete the donor
+    const [result] = await connection.query(
+      "DELETE FROM donor WHERE donor_id = ?",
+      [id]
+    );
+    connection.release();
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        error: `Donor with ID ${id} not found`,
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Donor deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting donor:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to delete donor",
+      details: error.message,
+    });
+  }
+});
+
 module.exports = router;

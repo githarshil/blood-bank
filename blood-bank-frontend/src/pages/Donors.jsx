@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
+import { useNotification } from '../context/NotificationContext';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
 function Donors() {
+  const { addNotification } = useNotification();
   const [donors, setDonors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -18,11 +21,33 @@ function Donors() {
   });
   
   const [formSubmitLoading, setFormSubmitLoading] = useState(false);
-  const [formSuccessMessage, setFormSuccessMessage] = useState(null);
-  const [formErrorMessage, setFormErrorMessage] = useState(null);
   const [loggingDonationId, setLoggingDonationId] = useState(null);
+  const [deleteLoadingId, setDeleteLoadingId] = useState(null);
+
+  const deleteDonor = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this donor? This will also remove their entire donation history.")) {
+      return;
+    }
+    setDeleteLoadingId(id);
+    try {
+      const response = await api.delete(`/api/donors/${id}`);
+      if (response.data && response.data.success) {
+        addNotification("Donor and associated history deleted successfully.", "success");
+        fetchDonors();
+      } else {
+        throw new Error(response.data.error || "Failed to delete donor");
+      }
+    } catch (err) {
+      console.error(err);
+      const backendError = err.response?.data?.error || err.message || "Failed to delete donor.";
+      addNotification(backendError, "error");
+    } finally {
+      setDeleteLoadingId(null);
+    }
+  };
 
   const fetchDonors = async () => {
+    setIsRefreshing(true);
     try {
       setLoading(true);
       setError(null);
@@ -37,6 +62,7 @@ function Donors() {
       setError(err.message || 'Error occurred while loading donor records.');
     } finally {
       setLoading(false);
+      setTimeout(() => setIsRefreshing(false), 600);
     }
   };
 
@@ -55,12 +81,10 @@ function Donors() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormSubmitLoading(true);
-    setFormSuccessMessage(null);
-    setFormErrorMessage(null);
 
     // Simple Client-side validation
     if (!formData.name.trim() || !formData.blood_group || !formData.phone.trim()) {
-      setFormErrorMessage('Name, Blood Group, and Phone fields are required.');
+      addNotification('Name, Blood Group, and Phone fields are required.', 'error');
       setFormSubmitLoading(false);
       return;
     }
@@ -68,7 +92,7 @@ function Donors() {
     try {
       const response = await api.post('/api/donors', formData);
       if (response.data && response.data.success) {
-        setFormSuccessMessage('Donor registered successfully!');
+        addNotification('Donor registered successfully!', 'success');
         // Reset form
         setFormData({
           name: '',
@@ -85,7 +109,7 @@ function Donors() {
     } catch (err) {
       console.error(err);
       const backendError = err.response?.data?.error || err.message || 'Database error registered.';
-      setFormErrorMessage(backendError);
+      addNotification(backendError, 'error');
     } finally {
       setFormSubmitLoading(false);
     }
@@ -101,14 +125,16 @@ function Donors() {
         units: 1
       });
       if (response.data?.success) {
-        setFormSuccessMessage(`Donation logged for ${donor.name}. Check Reports for updated stats.`);
+        addNotification(`Donation logged for ${donor.name}. Check Reports for updated stats.`, 'success');
         fetchDonors();
       } else {
         throw new Error(response.data?.error || 'Failed to log donation');
       }
     } catch (err) {
       console.error(err);
-      setFormErrorMessage(err.response?.data?.error || err.message || 'Failed to log donation');
+      const errorMsg = err.response?.data?.error || err.message || 'Failed to log donation';
+      const errorType = err.response?.data?.error?.includes('already donated') ? 'warning' : 'error';
+      addNotification(errorMsg, errorType);
     } finally {
       setLoggingDonationId(null);
     }
@@ -132,31 +158,13 @@ function Donors() {
       </div>
 
       {/* Top Section: Form Card */}
-      <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden animate-smooth-fade-in">
         <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50">
           <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
             <span className="text-red-700">🩸</span> Register New Donor
           </h2>
         </div>
         <div className="p-6">
-          {formSuccessMessage && (
-            <div className="mb-4 p-4 bg-emerald-50 border border-emerald-100 text-emerald-800 rounded-xl text-sm font-semibold flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
-              {formSuccessMessage}
-            </div>
-          )}
-
-          {formErrorMessage && (
-            <div className="mb-4 p-4 bg-rose-50 border border-rose-100 text-rose-800 rounded-xl text-sm font-semibold flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
-              {formErrorMessage}
-            </div>
-          )}
-
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label htmlFor="name" className="block text-xs font-bold text-slate-700 uppercase tracking-wide">Full Name *</label>
@@ -253,16 +261,24 @@ function Donors() {
       </div>
 
       {/* Bottom Section: Table of Donors */}
-      <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden animate-smooth-fade-in">
         <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
           <h2 className="text-lg font-bold text-slate-900">Registered Donors</h2>
           <button 
-            onClick={fetchDonors} 
-            className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-800 transition-colors"
+            onClick={fetchDonors}
+            disabled={isRefreshing}
+            className="group p-2 hover:bg-slate-150 active:bg-slate-200/70 border border-slate-100 hover:border-slate-200/80 rounded-xl text-slate-500 hover:text-red-755 transition-all shadow-sm flex items-center justify-center disabled:opacity-50"
             title="Refresh List"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18.5"></path>
+            <svg 
+              className={`w-4 h-4 transition-transform duration-500 ease-out group-hover:rotate-180 ${isRefreshing ? 'animate-spin text-red-600' : ''}`} 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2"
+              viewBox="0 0 24 24" 
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
             </svg>
           </button>
         </div>
@@ -290,8 +306,8 @@ function Donors() {
 
         {/* Empty State */}
         {!loading && !error && donors.length === 0 && (
-          <div className="p-12 text-center flex flex-col items-center justify-center space-y-3">
-            <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center">
+          <div className="p-12 text-center flex flex-col items-center justify-center space-y-3 animate-smooth-fade-in">
+            <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center transition-smooth hover:scale-110">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
               </svg>
@@ -319,10 +335,16 @@ function Donors() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {donors.map((donor, idx) => (
-                  <tr key={donor.donor_id || donor.DonorID || idx} className="hover:bg-slate-50/50 transition-colors">
+                  <tr 
+                    key={donor.donor_id || donor.DonorID || idx} 
+                    className="hover:bg-slate-50/50 transition-smooth cursor-default"
+                    style={{
+                      animation: `smooth-fade-in 0.3s ease-out ${idx * 30}ms both`
+                    }}
+                  >
                     <td className="px-6 py-4 text-sm font-bold text-slate-900">{donor.name}</td>
                     <td className="px-6 py-4 text-sm">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800 transition-smooth hover:scale-105">
                         {donor.blood_group}
                       </span>
                     </td>
@@ -333,16 +355,34 @@ function Donors() {
                     <td className="px-6 py-4 text-sm text-slate-600 font-medium">
                       {formatDate(donor.last_donation_date)}
                     </td>
-                    <td className="px-6 py-4 text-sm">
-                      <button
-                        type="button"
-                        onClick={() => logDonation(donor)}
-                        disabled={loggingDonationId === (donor.donor_id || donor.DonorID)}
-                        className="px-3 py-1.5 bg-red-700 text-white text-xs font-semibold rounded-lg hover:bg-red-800 disabled:opacity-50 transition-colors"
-                      >
-                        {loggingDonationId === (donor.donor_id || donor.DonorID) ? 'Logging...' : 'Log Donation'}
-                      </button>
-                    </td>
+                     <td className="px-6 py-4 text-sm flex items-center gap-2">
+                       <button
+                         type="button"
+                         onClick={() => logDonation(donor)}
+                         disabled={loggingDonationId === (donor.donor_id || donor.DonorID) || deleteLoadingId === (donor.donor_id || donor.DonorID)}
+                         className="px-3 py-1.5 bg-red-700 text-white text-xs font-semibold rounded-lg hover:bg-red-800 disabled:opacity-50 transition-smooth hover:scale-105 disabled:hover:scale-100"
+                       >
+                         {loggingDonationId === (donor.donor_id || donor.DonorID) ? 'Logging...' : 'Log Donation'}
+                       </button>
+                       <button
+                         type="button"
+                         onClick={() => deleteDonor(donor.donor_id || donor.DonorID)}
+                         disabled={loggingDonationId === (donor.donor_id || donor.DonorID) || deleteLoadingId === (donor.donor_id || donor.DonorID)}
+                         className="p-1.5 border border-rose-200 text-rose-600 hover:text-white hover:bg-rose-600 rounded-lg text-xs transition-all hover:scale-105 flex items-center justify-center disabled:opacity-50 shadow-sm"
+                         title="Delete Donor"
+                       >
+                         {deleteLoadingId === (donor.donor_id || donor.DonorID) ? (
+                           <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                           </svg>
+                         ) : (
+                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                             <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                           </svg>
+                         )}
+                       </button>
+                     </td>
                   </tr>
                 ))}
               </tbody>

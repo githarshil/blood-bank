@@ -306,4 +306,37 @@ router.put("/:id", async (req, res) => {
   }
 });
 
+// DELETE /api/requests/:id
+router.delete("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const connection = await pool.getConnection();
+    const [result] = await connection.query(
+      "DELETE FROM blood_request WHERE request_id = ?",
+      [id]
+    );
+    connection.release();
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        error: `Request with ID ${id} not found`,
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Request deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting request:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to delete request",
+      details: error.message,
+    });
+  }
+});
+
 module.exports = router;

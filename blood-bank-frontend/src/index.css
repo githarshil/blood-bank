@@ -12,6 +12,107 @@
   }
 }
 
+/* Custom smooth animations */
+@layer utilities {
+  @keyframes smooth-rotate {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes smooth-fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes smooth-slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes smooth-slide-left {
+    from {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes toast-in {
+    0% {
+      opacity: 0;
+      transform: translateX(30px) scale(0.96);
+    }
+    100% {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+    }
+  }
+
+  @keyframes toast-out {
+    0% {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: translateX(30px) scale(0.96);
+    }
+  }
+
+  .animate-smooth-rotate {
+    animation: smooth-rotate 0.6s ease-in-out;
+  }
+
+  .animate-smooth-fade-in {
+    animation: smooth-fade-in 0.4s ease-out;
+  }
+
+  .animate-smooth-slide-up {
+    animation: smooth-slide-up 0.5s ease-out;
+  }
+
+  .animate-smooth-slide-left {
+    animation: smooth-slide-left 0.5s ease-out;
+  }
+
+  .animate-toast-in {
+    animation: toast-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+
+  .animate-toast-out {
+    animation: toast-out 0.3s cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards;
+  }
+
+  .transition-smooth {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .transition-smooth-fast {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .group:hover .group-hover\:smooth-scale {
+    transform: scale(1.02);
+  }
+}
+
 /* Elegant custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

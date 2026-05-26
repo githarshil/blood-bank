@@ -5,8 +5,10 @@ function Alerts() {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const fetchAlerts = async () => {
+    setIsRefreshing(true);
     try {
       setLoading(true);
       setError(null);
@@ -21,6 +23,7 @@ function Alerts() {
       setError(err.message || 'Error occurred while loading system alerts.');
     } finally {
       setLoading(false);
+      setTimeout(() => setIsRefreshing(false), 600);
     }
   };
 
@@ -73,13 +76,21 @@ function Alerts() {
           <p className="mt-2 text-sm text-slate-500">Live indicators of under-threshold supply and expired batches.</p>
         </div>
         <button 
-          onClick={fetchAlerts} 
-          className="px-4 py-2 border border-slate-200 hover:border-slate-350 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-xl transition-all shadow-sm flex items-center gap-2"
+          onClick={fetchAlerts}
+          disabled={isRefreshing}
+          className="group px-4 py-2 border border-slate-200 hover:border-slate-300 hover:shadow-sm bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-xl transition-all flex items-center gap-2 disabled:opacity-60"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18.5"></path>
+          <svg 
+            className={`w-4 h-4 transition-transform duration-500 ease-out group-hover:rotate-180 ${isRefreshing ? 'animate-spin text-red-600' : ''}`} 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="2"
+            viewBox="0 0 24 24" 
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
           </svg>
-          Refresh Feed
+          {isRefreshing ? 'Refreshing...' : 'Refresh Feed'}
         </button>
       </div>
 
@@ -121,8 +132,8 @@ function Alerts() {
 
       {/* Empty State */}
       {!loading && !error && alerts.length === 0 && (
-        <div className="bg-white border border-slate-100 rounded-2xl p-12 text-center flex flex-col items-center justify-center space-y-4 shadow-sm">
-          <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center text-2xl">
+        <div className="bg-white border border-slate-100 rounded-2xl p-12 text-center flex flex-col items-center justify-center space-y-4 shadow-sm animate-smooth-fade-in">
+          <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center text-2xl transition-smooth hover:scale-110">
             ✓
           </div>
           <div>
@@ -145,7 +156,10 @@ function Alerts() {
             return (
               <div 
                 key={id}
-                className={`border rounded-2xl p-6 shadow-sm flex items-start gap-4 transition-all duration-300 hover:shadow-md ${style.cardBg}`}
+                style={{
+                  animation: `smooth-slide-left 0.5s ease-out ${idx * 50}ms both`
+                }}
+                className={`border rounded-2xl p-6 shadow-sm flex items-start gap-4 transition-smooth hover:shadow-lg hover:scale-102 cursor-default ${style.cardBg}`}
               >
                 <div className="text-2xl mt-0.5 flex-shrink-0">
                   {style.icon}
@@ -156,7 +170,7 @@ function Alerts() {
                     <div className="flex items-center gap-2.5">
                       <h4 className="font-bold text-base tracking-tight">{style.title}</h4>
                       {bloodGroup && (
-                        <span className={`text-xs px-2.5 py-0.5 font-bold rounded-full ${style.badgeBg}`}>
+                        <span className={`text-xs px-2.5 py-0.5 font-bold rounded-full transition-smooth ${style.badgeBg}`}>
                           Group {bloodGroup}
                         </span>
                       )}

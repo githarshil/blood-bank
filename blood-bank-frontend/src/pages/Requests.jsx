@@ -23,6 +23,35 @@ function Requests() {
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [actionMessage, setActionMessage] = useState(null);
 
+  const handleDeleteRequest = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this patient request?")) {
+      return;
+    }
+    setActionLoadingId(id);
+    setActionMessage(null);
+    try {
+      const response = await api.delete(`/api/requests/${id}`);
+      if (response.data && response.data.success) {
+        setActionMessage({
+          type: 'success',
+          text: `Request #${id} deleted successfully.`
+        });
+        fetchRequests();
+      } else {
+        throw new Error(response.data.error || "Failed to delete request.");
+      }
+    } catch (err) {
+      console.error(err);
+      const backendError = err.response?.data?.error || err.message || "Failed to delete request.";
+      setActionMessage({
+        type: 'error',
+        text: `Delete failed: ${backendError}`
+      });
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
   const fetchRequests = async () => {
     try {
       setLoading(true);
@@ -259,11 +288,12 @@ function Requests() {
           <h2 className="text-lg font-bold text-slate-900">Request Ledger</h2>
           <button 
             onClick={fetchRequests} 
-            className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-800 transition-colors"
+            disabled={loading}
+            className="group p-2 hover:bg-slate-150 active:bg-slate-200/70 border border-slate-100 hover:border-slate-200/80 rounded-xl text-slate-500 hover:text-red-755 transition-all shadow-sm flex items-center justify-center disabled:opacity-50"
             title="Refresh List"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18.5"></path>
+            <svg className={`w-4 h-4 transition-transform duration-500 ease-out group-hover:rotate-180 ${loading ? 'animate-spin text-red-600' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
             </svg>
           </button>
         </div>
@@ -358,28 +388,42 @@ function Requests() {
                         {formatRequestedDate(row)}
                       </td>
                       <td className="px-6 py-4 text-sm text-right">
-                        {isPending && (
+                        <div className="flex items-center gap-2 justify-end">
+                          {isPending && (
+                            <button
+                              onClick={() => handleFulfill(id)}
+                              disabled={actionLoadingId !== null}
+                              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
+                            >
+                              {actionLoadingId === id ? (
+                                <>
+                                  <svg className="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  </svg>
+                                  Fulfilling...
+                                </>
+                              ) : (
+                                'Fulfill'
+                              )}
+                            </button>
+                          )}
+                          {!isPending && (
+                            <span className="text-xs text-slate-400 italic font-medium px-2.5 py-1 bg-slate-50 border border-slate-100 rounded-lg">Completed</span>
+                          )}
+
                           <button
-                            onClick={() => handleFulfill(id)}
+                            type="button"
+                            onClick={() => handleDeleteRequest(id)}
                             disabled={actionLoadingId !== null}
-                            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5 ml-auto shadow-sm"
+                            className="p-1.5 border border-rose-200 text-rose-600 hover:text-white hover:bg-rose-600 rounded-lg text-xs transition-all hover:scale-105 flex items-center justify-center disabled:opacity-50 shadow-sm"
+                            title="Delete Request"
                           >
-                            {actionLoadingId === id ? (
-                              <>
-                                <svg className="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                Fulfilling...
-                              </>
-                            ) : (
-                              'Fulfill'
-                            )}
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
                           </button>
-                        )}
-                        {!isPending && (
-                          <span className="text-xs text-slate-400 italic font-medium">Completed</span>
-                        )}
+                        </div>
                       </td>
                     </tr>
                   );

@@ -53,6 +53,21 @@ router.post("/", async (req, res) => {
 
     const donatedAt = donated_at || new Date();
 
+    // Check if donor has already donated today
+    const [todayDonations] = await pool.query(
+      `SELECT donation_id FROM donation 
+       WHERE donor_id = ? AND DATE(donated_at) = CURDATE()`,
+      [donor_id],
+    );
+
+    if (todayDonations.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Donor has already donated today",
+        message: "A donor can only donate once per day",
+      });
+    }
+
     const [result] = await pool.query(
       `INSERT INTO donation (donor_id, blood_group, units, donated_at)
        VALUES (?, ?, ?, ?)`,

@@ -8,12 +8,14 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [loadingHint, setLoadingHint] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const fetchInventory = async () => {
     const hintTimer = setTimeout(() => {
       setLoadingHint('Connecting to local MySQL database...');
     }, 4000);
 
+    setIsRefreshing(true);
     try {
       setLoading(true);
       setLoadingHint('');
@@ -55,6 +57,7 @@ function Dashboard() {
       clearTimeout(hintTimer);
       setLoading(false);
       setLoadingHint('');
+      setTimeout(() => setIsRefreshing(false), 600);
     }
   };
 
@@ -145,18 +148,21 @@ function Dashboard() {
       {/* Main Stock Grid */}
       {!loading && !error && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-          {BLOOD_GROUPS.map((group) => {
+          {BLOOD_GROUPS.map((group, idx) => {
             const units = inventory[group] || 0;
             const style = getCardStyle(units);
 
             return (
               <div 
-                key={group} 
-                className={`group border rounded-2xl p-6 flex flex-col justify-between h-44 shadow-sm transition-all duration-300 hover:shadow-md ${style.bg}`}
+                key={group}
+                style={{
+                  animation: `smooth-slide-up 0.5s ease-out ${idx * 50}ms both`
+                }}
+                className={`group border rounded-2xl p-6 flex flex-col justify-between h-44 shadow-sm hover:shadow-lg transition-smooth hover:scale-105 cursor-default ${style.bg}`}
               >
                 <div className="flex justify-between items-start">
                   <span className="text-3xl font-extrabold tracking-tight">{group}</span>
-                  <span className={`text-xs px-2.5 py-1 font-semibold rounded-full ${style.badge}`}>
+                  <span className={`text-xs px-2.5 py-1 font-semibold rounded-full transition-smooth ${style.badge}`}>
                     {style.status}
                   </span>
                 </div>
@@ -169,7 +175,7 @@ function Dashboard() {
                     <span className="text-sm font-semibold opacity-80">Units</span>
                   </div>
                   <div className="flex items-center gap-1.5 text-xs opacity-75">
-                    <span className={`w-2 h-2 rounded-full ${style.indicator}`}></span>
+                    <span className={`w-2 h-2 rounded-full transition-smooth ${style.indicator}`}></span>
                     <span>1 Unit = 450ml Bag</span>
                   </div>
                 </div>
@@ -181,29 +187,29 @@ function Dashboard() {
 
       {/* Color Legend */}
       {!loading && !error && (
-        <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
+        <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm animate-smooth-fade-in">
           <h3 className="text-sm font-bold text-slate-900 tracking-wide uppercase">Inventory Threshold Legend</h3>
           <p className="text-xs text-slate-500 mt-1">Status colors represent critical levels mapped to blood reserves.</p>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
-            <div className="flex items-start gap-3 p-3 bg-emerald-50/50 border border-emerald-100 rounded-xl">
-              <span className="w-3.5 h-3.5 mt-0.5 rounded-full bg-emerald-500 flex-shrink-0"></span>
+            <div className="flex items-start gap-3 p-3 bg-emerald-50/50 border border-emerald-100 rounded-xl transition-smooth hover:shadow-md hover:border-emerald-200">
+              <span className="w-3.5 h-3.5 mt-0.5 rounded-full bg-emerald-500 flex-shrink-0 transition-smooth group-hover:scale-125"></span>
               <div>
                 <h4 className="text-xs font-bold text-emerald-950">Safe Stock (&gt; 10 Units)</h4>
                 <p className="text-xs text-emerald-700 mt-0.5">Sufficient volume of blood units; adequate for standard requests.</p>
               </div>
             </div>
 
-            <div className="flex items-start gap-3 p-3 bg-amber-50/50 border border-amber-100 rounded-xl">
-              <span className="w-3.5 h-3.5 mt-0.5 rounded-full bg-amber-500 flex-shrink-0"></span>
+            <div className="flex items-start gap-3 p-3 bg-amber-50/50 border border-amber-100 rounded-xl transition-smooth hover:shadow-md hover:border-amber-200">
+              <span className="w-3.5 h-3.5 mt-0.5 rounded-full bg-amber-500 flex-shrink-0 transition-smooth group-hover:scale-125"></span>
               <div>
                 <h4 className="text-xs font-bold text-amber-950">Low Stock (4 - 9 Units)</h4>
                 <p className="text-xs text-amber-700 mt-0.5">Diminished stock. Keep track of incoming donations for this type.</p>
               </div>
             </div>
 
-            <div className="flex items-start gap-3 p-3 bg-rose-50/50 border border-rose-100 rounded-xl">
-              <span className="w-3.5 h-3.5 mt-0.5 rounded-full bg-rose-500 flex-shrink-0"></span>
+            <div className="flex items-start gap-3 p-3 bg-rose-50/50 border border-rose-100 rounded-xl transition-smooth hover:shadow-md hover:border-rose-200">
+              <span className="w-3.5 h-3.5 mt-0.5 rounded-full bg-rose-500 flex-shrink-0 transition-smooth group-hover:scale-125"></span>
               <div>
                 <h4 className="text-xs font-bold text-rose-950">Critical Stock (&lt; 4 Units)</h4>
                 <p className="text-xs text-rose-700 mt-0.5">Dangerously low volume. Triggers system-wide alerts immediately.</p>

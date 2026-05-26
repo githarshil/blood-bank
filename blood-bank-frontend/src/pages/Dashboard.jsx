@@ -5,6 +5,9 @@ const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
 function Dashboard() {
   const [inventory, setInventory] = useState({});
+  const [donorCounts, setDonorCounts] = useState({});
+  const [donorCount, setDonorCount] = useState(0);
+  const [activeRequestsCount, setActiveRequestsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [loadingHint, setLoadingHint] = useState('');
@@ -20,16 +23,22 @@ function Dashboard() {
       setLoading(true);
       setLoadingHint('');
       setError(null);
-      const response = await api.get('/api/inventory');
+
+      // Perform parallel fetches in a Promise.all block for extremely responsive load times
+      const [invRes, donorsRes, requestsRes] = await Promise.all([
+        api.get('/api/inventory'),
+        api.get('/api/donors'),
+        api.get('/api/requests')
+      ]);
       
-      if (response.data && response.data.success) {
+      if (invRes.data && invRes.data.success) {
         // Group and sum up the quantities by blood group
         const totals = {};
         BLOOD_GROUPS.forEach(g => {
           totals[g] = 0;
         });
 
-        const items = response.data.data || [];
+        const items = invRes.data.data || [];
         items.forEach(item => {
           const type = item.BloodType;
           if (BLOOD_GROUPS.includes(type)) {
@@ -40,6 +49,28 @@ function Dashboard() {
         setInventory(totals);
       } else {
         throw new Error('Failed to retrieve inventory data');
+      }
+
+      if (donorsRes.data && donorsRes.data.success) {
+        const counts = {};
+        BLOOD_GROUPS.forEach(g => {
+          counts[g] = 0;
+        });
+        const list = donorsRes.data.data || [];
+        list.forEach(donor => {
+          const group = donor.blood_group || donor.BloodType;
+          if (BLOOD_GROUPS.includes(group)) {
+            counts[group]++;
+          }
+        });
+        setDonorCounts(counts);
+        setDonorCount(list.length);
+      }
+
+      if (requestsRes.data && requestsRes.data.success) {
+        const list = requestsRes.data.data || [];
+        const pending = list.filter(r => String(r.status).toLowerCase() === 'pending').length;
+        setActiveRequestsCount(pending);
       }
     } catch (err) {
       console.error(err);
@@ -93,11 +124,68 @@ function Dashboard() {
 
   return (
     <div className="space-y-8">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Dashboard</h1>
-        <p className="mt-2 text-sm text-slate-500">Real-time blood stock levels in the main cold storage repository.</p>
+      {/* Page Header with circular refresh button matching other pages */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Dashboard</h1>
+          <p className="mt-2 text-sm text-slate-500">Real-time blood stock levels in the main cold storage repository.</p>
+        </div>
+        <button 
+          onClick={fetchInventory}
+          disabled={isRefreshing || loading}
+          className="group p-2 hover:bg-slate-150 active:bg-slate-200/70 border border-slate-100 hover:border-slate-200/80 rounded-xl text-slate-500 hover:text-red-755 transition-all shadow-sm flex items-center justify-center disabled:opacity-50"
+          title="Refresh Dashboard"
+        >
+          <svg 
+            className={`w-4 h-4 transition-transform duration-500 ease-out group-hover:rotate-180 ${isRefreshing ? 'animate-spin text-red-600' : ''}`} 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="2"
+            viewBox="0 0 24 24" 
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+          </svg>
+        </button>
       </div>
+
+      {/* Top KPI Summary Row showing the total registered donor count */}
+      {!loading && !error && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-smooth-slide-up">
+          {/* Total Blood Stock */}
+          <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow cursor-default">
+            <div className="w-12 h-12 bg-red-50 text-red-600 rounded-full flex items-center justify-center text-xl flex-shrink-0 shadow-inner">🩸</div>
+            <div>
+              <span className="block text-xs font-bold text-slate-400 uppercase tracking-wide">Total Blood Stock</span>
+              <span className="text-2xl font-black text-slate-900 mt-1 block">
+                {Object.values(inventory).reduce((a, b) => a + b, 0).toFixed(2)} Units
+              </span>
+            </div>
+          </div>
+
+          {/* Registered Donors Count */}
+          <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow cursor-default">
+            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-xl flex-shrink-0 shadow-inner">👥</div>
+            <div>
+              <span className="block text-xs font-bold text-slate-400 uppercase tracking-wide">Registered Donors</span>
+              <span className="text-2xl font-black text-slate-900 mt-1 block">
+                {donorCount}
+              </span>
+            </div>
+          </div>
+
+          {/* Active Blood Requests */}
+          <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow cursor-default">
+            <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center text-xl flex-shrink-0 shadow-inner">📋</div>
+            <div>
+              <span className="block text-xs font-bold text-slate-400 uppercase tracking-wide">Active Requests</span>
+              <span className="text-2xl font-black text-slate-900 mt-1 block">
+                {activeRequestsCount}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Loading Skeletons */}
       {loading && (
@@ -109,14 +197,14 @@ function Dashboard() {
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
             {BLOOD_GROUPS.map((g, idx) => (
-              <div key={idx} className="h-44 bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex flex-col justify-between animate-pulse">
+              <div key={idx} className="h-48 bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex flex-col justify-between animate-pulse">
                 <div className="flex justify-between items-center">
                   <div className="w-12 h-6 bg-slate-200 rounded"></div>
                   <div className="w-20 h-5 bg-slate-200 rounded-full"></div>
                 </div>
-                <div className="space-y-2">
-                  <div className="w-16 h-8 bg-slate-200 rounded"></div>
-                  <div className="w-28 h-4 bg-slate-200 rounded"></div>
+                <div className="space-y-2 mt-4">
+                  <div className="h-6 bg-slate-200 rounded w-3/4"></div>
+                  <div className="h-4 bg-slate-100 rounded w-1/2"></div>
                 </div>
               </div>
             ))}
@@ -145,12 +233,13 @@ function Dashboard() {
         </div>
       )}
 
-      {/* Main Stock Grid */}
+      {/* Main Stock & Active Donors Grid */}
       {!loading && !error && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
           {BLOOD_GROUPS.map((group, idx) => {
             const units = inventory[group] || 0;
             const style = getCardStyle(units);
+            const donorsForGroup = donorCounts[group] || 0;
 
             return (
               <div 
@@ -158,7 +247,7 @@ function Dashboard() {
                 style={{
                   animation: `smooth-slide-up 0.5s ease-out ${idx * 50}ms both`
                 }}
-                className={`group border rounded-2xl p-6 flex flex-col justify-between h-44 shadow-sm hover:shadow-lg transition-smooth hover:scale-105 cursor-default ${style.bg}`}
+                className={`group border rounded-2xl p-6 flex flex-col justify-between h-48 shadow-sm hover:shadow-lg transition-smooth hover:scale-105 cursor-default ${style.bg}`}
               >
                 <div className="flex justify-between items-start">
                   <span className="text-3xl font-extrabold tracking-tight">{group}</span>
@@ -167,16 +256,21 @@ function Dashboard() {
                   </span>
                 </div>
                 
-                <div className="space-y-1">
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-4xl font-extrabold tracking-tight">
-                      {units.toFixed(2)}
+                <div className="space-y-2 mt-4">
+                  {/* Blood stock units */}
+                  <div className="flex justify-between items-baseline border-b border-slate-200/40 pb-2">
+                    <span className="text-xs font-bold opacity-75 uppercase tracking-wide">Stock</span>
+                    <span className="text-2xl font-black tracking-tight">
+                      {units.toFixed(2)} <span className="text-xs font-semibold opacity-85">Units</span>
                     </span>
-                    <span className="text-sm font-semibold opacity-80">Units</span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-xs opacity-75">
-                    <span className={`w-2 h-2 rounded-full transition-smooth ${style.indicator}`}></span>
-                    <span>1 Unit = 450ml Bag</span>
+
+                  {/* Registered donor count for this blood group */}
+                  <div className="flex justify-between items-baseline pt-1">
+                    <span className="text-xs font-bold opacity-75 uppercase tracking-wide">Donors</span>
+                    <span className="text-xl font-bold tracking-tight">
+                      {donorsForGroup} <span className="text-xs font-semibold opacity-85">Registered</span>
+                    </span>
                   </div>
                 </div>
               </div>

@@ -37,4 +37,4 @@ database.db
 temp/
 
 # Markdown files
-*.md
+*md

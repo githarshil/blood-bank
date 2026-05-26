@@ -35,3 +35,6 @@ database.db
 .cache/
 .tmp/
 temp/
+
+# Markdown files
+*.md

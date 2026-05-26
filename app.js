@@ -16,8 +16,6 @@ const alertRoutes = require("./routes/alerts");
 
 const app = express();
 
-
-
 // CORS — allow local development origins and configured CORS_ORIGIN
 const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:3000")
   .split(",")
@@ -74,7 +72,9 @@ const healthHandler = async (req, res) => {
     host: poolConfig.host,
     port: poolConfig.port,
     user: poolConfig.user,
-    envKeys: Object.keys(process.env).filter(k => !/pass|key|token|secret/i.test(k)),
+    envKeys: Object.keys(process.env).filter(
+      (k) => !/pass|key|token|secret/i.test(k),
+    ),
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || "development",
     platform: "node",
@@ -91,7 +91,10 @@ app.use("/api/requests", requestRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/alerts", alertRoutes);
 
-if (process.env.NODE_ENV === "production" && process.env.SERVE_FRONTEND === "true") {
+if (
+  process.env.NODE_ENV === "production" &&
+  process.env.SERVE_FRONTEND === "true"
+) {
   const frontendDist = path.join(__dirname, "blood-bank-frontend", "dist");
   app.use(express.static(frontendDist));
   app.get("*", (req, res, next) => {

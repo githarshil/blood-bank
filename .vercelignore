@@ -1,6 +1,0 @@
-node_modules
-blood-bank-frontend/node_modules
-.env
-.env.local
-*.log
-terminals

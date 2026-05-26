@@ -9,8 +9,6 @@
 const mysql = require("mysql2/promise");
 require("dotenv").config();
 
-const isServerless = process.env.VERCEL === "1";
-
 let poolConfig = {
   host: "localhost",
   port: 3306,
@@ -18,10 +16,10 @@ let poolConfig = {
   password: "",
   database: "bloodbankdb",
   waitForConnections: true,
-  connectionLimit: isServerless ? 1 : 5,
+  connectionLimit: 10,
   queueLimit: 0,
   connectTimeout: 10000,
-  enableKeepAlive: !isServerless,
+  enableKeepAlive: true,
   decimalNumbers: true,
 };
 

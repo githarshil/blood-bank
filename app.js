@@ -16,34 +16,24 @@ const alertRoutes = require("./routes/alerts");
 
 const app = express();
 
-// Vercel serverless may strip /api prefix — restore it for Express routes
-app.use((req, res, next) => {
-  const path = req.path || "";
-  if (
-    !path.startsWith("/api") &&
-    path !== "/health" &&
-    /^\/(donors|donations|inventory|requests|reports|alerts)/.test(path)
-  ) {
-    req.url = `/api${req.url}`;
-  }
-  next();
-});
 
-// CORS — local, Render, Vercel production & preview URLs
+
+// CORS — allow local development origins and configured CORS_ORIGIN
 const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:3000")
   .split(",")
   .map((o) => o.trim())
   .filter(Boolean);
 
-if (process.env.VERCEL_URL) {
-  allowedOrigins.push(`https://${process.env.VERCEL_URL}`);
-}
-
 const corsOptions = {
   origin(origin, callback) {
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    if (/\.vercel\.app$/i.test(origin)) return callback(null, true);
+    if (
+      allowedOrigins.includes(origin) ||
+      /^http:\/\/localhost:\d+$/.test(origin) ||
+      /^http:\/\/127\.0\.0\.1:\d+$/.test(origin)
+    ) {
+      return callback(null, true);
+    }
     callback(null, false);
   },
   credentials: true,
@@ -87,7 +77,7 @@ const healthHandler = async (req, res) => {
     envKeys: Object.keys(process.env).filter(k => !/pass|key|token|secret/i.test(k)),
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || "development",
-    platform: process.env.VERCEL ? "vercel" : "node",
+    platform: "node",
   });
 };
 

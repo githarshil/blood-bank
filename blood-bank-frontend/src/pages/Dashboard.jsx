@@ -11,7 +11,7 @@ function Dashboard() {
 
   const fetchInventory = async () => {
     const hintTimer = setTimeout(() => {
-      setLoadingHint('Still connecting… First load from Vercel to Railway can take 10–15 seconds.');
+      setLoadingHint('Connecting to local MySQL database...');
     }, 4000);
 
     try {
@@ -44,7 +44,7 @@ function Dashboard() {
       let message = err.message || 'Something went wrong while connecting to the API server.';
       if (err.code === 'ERR_NETWORK') {
         message =
-          'Network Error — open /api/health and /api/inventory in the browser. If health shows dbConnected:false, add DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME=railway on Vercel and redeploy.';
+          'Network Error — Make sure your backend server is running at http://localhost:3001 and your local MySQL server is started.';
       } else if (err.code === 'ECONNABORTED') {
         message = 'Request timed out — API or database may be slow to wake up. Try again.';
       } else if (err.response?.data?.error) {

@@ -196,7 +196,8 @@ router.get("/:id", async (req, res) => {
 // POST /api/requests
 router.post("/", async (req, res) => {
   try {
-    const { patient_name, blood_group, units_required } = req.body;
+    const { patient_name, blood_group, units_required, hospital_name, hospital_distance_km } =
+      req.body;
 
     if (!patient_name || !blood_group || !units_required) {
       return res.status(400).json({
@@ -224,10 +225,51 @@ router.post("/", async (req, res) => {
     const connection = await pool.getConnection();
 
     try {
+      // Ensure hospital selection metadata columns exist for ledger display.
+      // This keeps the feature backward-compatible with older DB snapshots.
+      const [hospitalNameColumn] = await connection.query(
+        `
+        SELECT 1
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'blood_request'
+          AND COLUMN_NAME = 'hospital_name'
+        LIMIT 1
+        `,
+      );
+      if (!hospitalNameColumn.length) {
+        await connection.query(
+          "ALTER TABLE blood_request ADD COLUMN hospital_name VARCHAR(150) NULL",
+        );
+      }
+
+      const [hospitalDistanceColumn] = await connection.query(
+        `
+        SELECT 1
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'blood_request'
+          AND COLUMN_NAME = 'hospital_distance_km'
+        LIMIT 1
+        `,
+      );
+      if (!hospitalDistanceColumn.length) {
+        await connection.query(
+          "ALTER TABLE blood_request ADD COLUMN hospital_distance_km DECIMAL(6,2) NULL",
+        );
+      }
+
       const [result] = await connection.query(
-        `INSERT INTO blood_request (patient_name, blood_group, units_required, status)
-         VALUES (?, ?, ?, 'Pending')`,
-        [patient_name, blood_group, units_required],
+        `INSERT INTO blood_request (
+          patient_name, blood_group, units_required, status, hospital_name, hospital_distance_km
+        ) VALUES (?, ?, ?, 'Pending', ?, ?)`,
+        [
+          patient_name,
+          blood_group,
+          units_required,
+          hospital_name || null,
+          hospital_distance_km ?? null,
+        ],
       );
 
       connection.release();
@@ -241,6 +283,8 @@ router.post("/", async (req, res) => {
           blood_group,
           units_required,
           status: "Pending",
+          hospital_name: hospital_name || null,
+          hospital_distance_km: hospital_distance_km ?? null,
         },
       });
     } catch (dbError) {

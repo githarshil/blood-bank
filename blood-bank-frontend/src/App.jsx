@@ -7,12 +7,13 @@ import Donors from './pages/Donors';
 import Requests from './pages/Requests';
 import Reports from './pages/Reports';
 import Alerts from './pages/Alerts';
+import AIAssistant from './pages/AIAssistant';
 
 function App() {
   return (
     <NotificationProvider>
       <Router>
-        <div className="flex min-h-screen bg-slate-50">
+        <div className="flex min-h-screen bg-app-bg">
           {/* Sidebar Navigation */}
           <Sidebar />
           
@@ -28,6 +29,7 @@ function App() {
                 <Route path="/requests" element={<Requests />} />
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/alerts" element={<Alerts />} />
+                <Route path="/ai" element={<AIAssistant />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </div>

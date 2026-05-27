@@ -13,6 +13,7 @@ const inventoryRoutes = require("./routes/inventory");
 const requestRoutes = require("./routes/requests");
 const reportRoutes = require("./routes/reports");
 const alertRoutes = require("./routes/alerts");
+const hospitalRoutes = require("./routes/hospitals");
 
 const app = express();
 
@@ -90,6 +91,7 @@ app.use("/api/inventory", inventoryRoutes);
 app.use("/api/requests", requestRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/alerts", alertRoutes);
+app.use("/api/hospitals", hospitalRoutes);
 
 if (
   process.env.NODE_ENV === "production" &&

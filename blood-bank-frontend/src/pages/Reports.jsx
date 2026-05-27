@@ -83,28 +83,28 @@ function Reports() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Reports</h1>
-        <p className="mt-2 text-sm text-slate-500">Generate aggregated monthly audit summaries of all blood donations collected.</p>
+        <h1 className="bb-page-title">Reports</h1>
+        <p className="bb-page-subtitle">Generate aggregated monthly audit summaries of all blood donations collected.</p>
       </div>
 
       {/* Top Section: Monthly Parameters Selection Card */}
-      <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-6 relative overflow-hidden">
+      <div className="bb-card p-6 relative overflow-hidden">
         {/* Subtle sliding refresh indicator line along the top of the card */}
         {loading && (
-          <div className="absolute top-0 left-0 right-0 h-[3px] bg-red-100 overflow-hidden">
-            <div className="h-full bg-red-600 rounded-full animate-pulse w-full" />
+          <div className="absolute top-0 left-0 right-0 h-[3px] bg-[rgba(220,38,38,0.18)] overflow-hidden">
+            <div className="h-full bg-accent rounded-full animate-pulse w-full" />
           </div>
         )}
 
         <form onSubmit={generateReport} className="flex flex-col md:flex-row items-end gap-6">
           <div className="flex-1 w-full">
-            <label htmlFor="month" className="block text-xs font-bold text-slate-700 uppercase tracking-wide">Select Month</label>
+            <label htmlFor="month" className="bb-label">Select Month</label>
             <select
               id="month"
               name="month"
               value={filter.month}
               onChange={handleInputChange}
-              className="mt-2 block w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-600 focus:bg-white transition-all text-slate-700 font-medium"
+              className="bb-input font-medium"
             >
               {MONTHS.map(m => (
                 <option key={m.value} value={m.value}>{m.name}</option>
@@ -113,7 +113,7 @@ function Reports() {
           </div>
 
           <div className="flex-1 w-full">
-            <label htmlFor="year" className="block text-xs font-bold text-slate-700 uppercase tracking-wide">Select Year</label>
+            <label htmlFor="year" className="bb-label">Select Year</label>
             <input
               type="number"
               id="year"
@@ -123,14 +123,14 @@ function Reports() {
               required
               value={filter.year}
               onChange={handleInputChange}
-              className="mt-2 block w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-600 focus:bg-white transition-all font-medium"
+              className="bb-input font-medium bb-mono"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="group w-full md:w-auto px-6 py-2.5 bg-red-700 text-white text-sm font-semibold rounded-xl hover:bg-red-850 hover:shadow-md hover:shadow-red-900/10 focus:outline-none focus:ring-2 focus:ring-red-500/20 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-sm whitespace-nowrap h-[42px]"
+            className="bb-button-primary group w-full md:w-auto px-6 disabled:opacity-50 flex items-center justify-center gap-2 whitespace-nowrap h-[42px]"
           >
             {loading ? (
               <>
@@ -156,7 +156,7 @@ function Reports() {
       {loading && !summaryData && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-smooth-slide-up">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex items-center gap-4 animate-pulse">
+            <div key={i} className="bb-card p-6 flex items-center gap-4 animate-pulse">
               <div className="w-12 h-12 bg-slate-100 rounded-full flex-shrink-0" />
               <div className="flex-1 space-y-2">
                 <div className="h-3 bg-slate-100 rounded w-2/3" />
@@ -170,31 +170,31 @@ function Reports() {
       {/* KPI Cards — shown after a successful report request */}
       {!error && searched && summaryData && (
         <div className={`grid grid-cols-1 md:grid-cols-3 gap-6 animate-smooth-slide-up transition-opacity duration-300 ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
-          <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
-            <div className="w-12 h-12 bg-red-50 text-red-600 rounded-full flex items-center justify-center text-xl flex-shrink-0 shadow-inner">🩸</div>
+          <div className="bb-card p-6 flex items-center gap-4 cursor-default">
+            <div className="w-12 h-12 bg-red-50 text-red-650 rounded-full flex items-center justify-center text-xl flex-shrink-0 shadow-inner">🩸</div>
             <div>
-              <span className="block text-xs font-bold text-slate-400 uppercase tracking-wide">Total Blood Collected</span>
-              <span className="text-2xl font-black text-slate-900 mt-1 block">
+              <span className="block text-[11px] font-bold text-text-muted uppercase tracking-[0.5px]">Total Blood Collected</span>
+              <span className="text-2xl font-black text-text-primary mt-1 block">
                 {parseFloat(summaryData.totalBloodCollected || 0).toFixed(2)} L
               </span>
             </div>
           </div>
 
-          <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
+          <div className="bb-card p-6 flex items-center gap-4 cursor-default">
             <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-xl flex-shrink-0 shadow-inner">👥</div>
             <div>
-              <span className="block text-xs font-bold text-slate-400 uppercase tracking-wide">Unique Donors</span>
-              <span className="text-2xl font-black text-slate-900 mt-1 block">
+              <span className="block text-[11px] font-bold text-text-muted uppercase tracking-[0.5px]">Unique Donors</span>
+              <span className="text-2xl font-black text-text-primary mt-1 block">
                 {summaryData.uniqueDonors || 0}
               </span>
             </div>
           </div>
 
-          <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
-            <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center text-xl flex-shrink-0 shadow-inner">✓</div>
+          <div className="bb-card p-6 flex items-center gap-4 cursor-default">
+            <div className="w-12 h-12 bg-emerald-50 text-emerald-650 rounded-full flex items-center justify-center text-xl flex-shrink-0 shadow-inner">✓</div>
             <div>
-              <span className="block text-xs font-bold text-slate-400 uppercase tracking-wide">Test Pass Rate</span>
-              <span className="text-2xl font-black text-slate-900 mt-1 block">
+              <span className="block text-[11px] font-bold text-text-muted uppercase tracking-[0.5px]">Test Pass Rate</span>
+              <span className="text-2xl font-black text-emerald-600 mt-1 block">
                 {summaryData.testPassRate || '100%'}
               </span>
             </div>
@@ -203,13 +203,13 @@ function Reports() {
       )}
 
       {/* Results Section */}
-      <div className={`bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden transition-opacity duration-300 ${loading && reportData.length > 0 ? 'opacity-50 pointer-events-none' : ''}`}>
-        <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-          <h2 className="text-lg font-bold text-slate-900">
+      <div className={`bb-card overflow-hidden transition-opacity duration-300 ${loading && reportData.length > 0 ? 'opacity-50 pointer-events-none' : ''}`}>
+        <div className="px-6 py-5 border-b border-app-border bg-slate-50/75 flex justify-between items-center">
+          <h2 className="text-sm font-bold text-text-primary">
             Monthly Donation Summary — {MONTHS.find(m => m.value === filter.month)?.name} {filter.year}
           </h2>
           {loading && reportData.length > 0 && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-red-50 text-red-700 animate-pulse">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-50 text-red-700 animate-pulse border border-red-100">
               <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping" />
               Refreshing...
             </span>
@@ -240,16 +240,16 @@ function Reports() {
         {/* Empty State */}
         {!loading && !error && searched && reportData.length === 0 && (
           <div className="p-12 text-center flex flex-col items-center justify-center space-y-3 animate-smooth-slide-up">
-            <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center">
+            <div className="w-12 h-12 bg-slate-50 border border-app-border text-text-muted rounded-full flex items-center justify-center">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2a2 2 0 00-2-2H5a2 2 0 00-2 2v2m6-12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-900">No Donations Logged</h3>
-              <p className="text-xs text-slate-500 mt-1">
+              <h3 className="text-sm font-bold text-text-primary">No Donations Logged</h3>
+              <p className="text-xs text-text-muted mt-1">
                 No donations were logged for {MONTHS.find(m => m.value === filter.month)?.name} {filter.year}.
-                Log a donation for a donor to populate this report.
+                Log a donation to populate this report.
               </p>
             </div>
           </div>
@@ -260,27 +260,27 @@ function Reports() {
           <div className="overflow-x-auto animate-smooth-slide-up">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50/75 border-b border-slate-100">
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wide">Blood Group</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wide">Total Donations</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wide">Total Units</th>
+                <tr className="bg-[#f8fafc] border-b border-app-border">
+                  <th className="px-6 py-4 text-[11px] font-bold text-text-muted uppercase tracking-[0.5px]">Blood Group</th>
+                  <th className="px-6 py-4 text-[11px] font-bold text-text-muted uppercase tracking-[0.5px]">Total Donations</th>
+                  <th className="px-6 py-4 text-[11px] font-bold text-text-muted uppercase tracking-[0.5px]">Total Units</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[#f1f5f9]">
                 {reportData.map((row, idx) => {
                   const bloodGroup = row.blood_group || row.bloodType;
                   const donations = row.total_donations || row.totalDonations || 0;
                   const units = row.total_units || row.totalQuantityCollected || row.TotalQuantityCollected || 0;
 
                   return (
-                    <tr key={bloodGroup || idx} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-6 py-4 text-sm font-bold text-slate-900">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-850">
+                    <tr key={bloodGroup || idx} className="hover:bg-[#fafafa] transition-colors border-b border-[#f1f5f9]">
+                      <td className="px-6 py-4 text-sm font-bold text-text-primary">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-50 border border-red-150 text-red-700 shadow-sm">
                           {bloodGroup}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm font-semibold text-slate-700">{donations}</td>
-                      <td className="px-6 py-4 text-sm font-bold text-slate-900">
+                      <td className="px-6 py-4 text-sm font-semibold text-text-muted">{donations}</td>
+                      <td className="px-6 py-4 text-sm font-bold text-text-primary">
                         {parseFloat(units).toFixed(2)} Units
                       </td>
                     </tr>

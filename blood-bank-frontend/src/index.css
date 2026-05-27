@@ -3,12 +3,69 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    color-scheme: light;
+  }
+
   body {
-    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    @apply bg-app-bg text-text-primary font-sans antialiased;
+    background-image: radial-gradient(rgba(220, 38, 38, 0.015) 1.5px, transparent 1.5px), radial-gradient(rgba(15, 23, 42, 0.015) 1px, transparent 1px);
+    background-size: 28px 28px;
+    background-position: 0 0, 14px 14px;
   }
   
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Outfit', sans-serif;
+    @apply font-heading tracking-tight;
+  }
+}
+
+@layer components {
+  .bb-card {
+    @apply bg-app-surface border border-app-border rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.02),0_8px_20px_-4px_rgba(15,23,42,0.03)] transition-all duration-300;
+  }
+
+  .bb-card-hover {
+    @apply hover:shadow-[0_10px_30px_-5px_rgba(220,38,38,0.05),0_1px_3px_rgba(0,0,0,0.01)] hover:-translate-y-0.5 hover:border-red-100 transition-all duration-300;
+  }
+
+  .bb-card-title {
+    @apply text-[15px] font-bold text-text-primary tracking-tight;
+  }
+
+  .bb-page-title {
+    @apply text-3xl font-extrabold tracking-tight text-text-primary bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent;
+  }
+
+  .bb-page-subtitle {
+    @apply mt-1 text-sm text-text-muted font-medium;
+  }
+
+  .bb-label {
+    @apply block text-[10px] font-bold uppercase tracking-[0.1em] text-text-muted;
+  }
+
+  .bb-input {
+    @apply mt-2 block w-full px-4 py-2.5 rounded-xl bg-white border border-[#e2e8f0] text-sm text-text-primary placeholder:text-text-muted/60 transition-all duration-200;
+    @apply focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/10 focus:shadow-sm;
+  }
+  .bb-button-primary {
+    @apply px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 text-white text-sm font-semibold shadow-sm transition-all duration-200;
+    @apply hover:from-red-700 hover:to-rose-700 hover:shadow-md hover:shadow-red-500/15 active:scale-[0.96];
+  }
+  .bb-table {
+    @apply w-full text-left border-collapse;
+  }
+
+  .bb-th {
+    @apply bg-[#f8fafc] text-text-muted uppercase tracking-[0.08em] text-[10px] font-bold border-b border-app-border py-4 px-6;
+  }
+
+  .bb-tr {
+    @apply bg-app-surface border-b border-[#f1f5f9] hover:bg-[#fafafa] transition-colors;
+  }
+
+  .bb-mono {
+    @apply font-mono;
   }
 }
 
@@ -26,16 +83,18 @@
   @keyframes smooth-fade-in {
     from {
       opacity: 0;
+      transform: scale(0.98);
     }
     to {
       opacity: 1;
+      transform: scale(1);
     }
   }
 
   @keyframes smooth-slide-up {
     from {
       opacity: 0;
-      transform: translateY(20px);
+      transform: translateY(12px);
     }
     to {
       opacity: 1;
@@ -46,7 +105,7 @@
   @keyframes smooth-slide-left {
     from {
       opacity: 0;
-      transform: translateX(20px);
+      transform: translateX(12px);
     }
     to {
       opacity: 1;
@@ -57,7 +116,7 @@
   @keyframes toast-in {
     0% {
       opacity: 0;
-      transform: translateX(30px) scale(0.96);
+      transform: translateX(20px) scale(0.96);
     }
     100% {
       opacity: 1;
@@ -72,7 +131,7 @@
     }
     100% {
       opacity: 0;
-      transform: translateX(30px) scale(0.96);
+      transform: translateX(20px) scale(0.96);
     }
   }
 
@@ -81,15 +140,15 @@
   }
 
   .animate-smooth-fade-in {
-    animation: smooth-fade-in 0.4s ease-out;
+    animation: smooth-fade-in 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .animate-smooth-slide-up {
-    animation: smooth-slide-up 0.5s ease-out;
+    animation: smooth-slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .animate-smooth-slide-left {
-    animation: smooth-slide-left 0.5s ease-out;
+    animation: smooth-slide-left 0.5s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .animate-toast-in {
@@ -113,10 +172,88 @@
   }
 }
 
+/* Highly realistic clinical IV drip and splash ripple animations */
+@keyframes drip-fall {
+  0% {
+    top: 0;
+    transform: translate(-50%, 0) scale(0) rotate(45deg);
+    opacity: 0;
+  }
+  /* Small swelling drop at nozzle */
+  5% {
+    top: 0;
+    transform: translate(-50%, 0) scale(0.6) rotate(45deg);
+    opacity: 0.9;
+  }
+  /* Growing and hanging due to surface tension */
+  35% {
+    top: 0;
+    transform: translate(-50%, 0) scale(1.1) scaleY(1.35) rotate(45deg);
+    opacity: 1;
+  }
+  /* Detaching and beginning acceleration (Ease-In gravity fall) */
+  45% {
+    top: 5%;
+    transform: translate(-50%, 0) scale(1) rotate(45deg);
+    opacity: 1;
+  }
+  /* Quick descent down the drip chamber */
+  62% {
+    top: 98%;
+    transform: translate(-50%, 0) scale(0.85) scaleY(1.2) rotate(45deg);
+    opacity: 1;
+  }
+  /* Impact splash on the blood fluid surface */
+  66% {
+    top: 100%;
+    transform: translate(-50%, -2px) scale(1.5, 0.4) rotate(45deg);
+    opacity: 0;
+  }
+  100% {
+    top: 0;
+    transform: translate(-50%, 0) scale(0) rotate(45deg);
+    opacity: 0;
+  }
+}
+
+@keyframes ripple-wave {
+  0%, 62% {
+    transform: translate(-50%, -50%) scale(0.2);
+    opacity: 0;
+  }
+  66% {
+    transform: translate(-50%, -50%) scale(0.6);
+    opacity: 0.6;
+    border-color: rgba(220, 38, 38, 0.6);
+  }
+  75% {
+    transform: translate(-50%, -50%) scale(1.6);
+    opacity: 0.3;
+    border-color: rgba(220, 38, 38, 0.3);
+  }
+  90% {
+    transform: translate(-50%, -50%) scale(2.8);
+    opacity: 0;
+    border-color: rgba(220, 38, 38, 0);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(0.2);
+    opacity: 0;
+  }
+}
+
+.animate-drip-fall {
+  animation: drip-fall 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite;
+}
+
+.animate-ripple-wave {
+  animation: ripple-wave 2s ease-out infinite;
+}
+
 /* Elegant custom scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
@@ -124,10 +261,10 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #e2e8f0;
-  border-radius: 4px;
+  background: #cbd5e1;
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #cbd5e1;
+  background: #94a3b8;
 }

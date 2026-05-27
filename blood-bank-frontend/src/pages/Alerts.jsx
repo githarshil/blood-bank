@@ -72,16 +72,16 @@ function Alerts() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Alerts</h1>
-          <p className="mt-2 text-sm text-slate-500">Live indicators of under-threshold supply and expired batches.</p>
+          <h1 className="bb-page-title">Alerts</h1>
+          <p className="bb-page-subtitle">Live indicators of under-threshold supply and expired batches.</p>
         </div>
         <button 
           onClick={fetchAlerts}
           disabled={isRefreshing}
-          className="group px-4 py-2 border border-slate-200 hover:border-slate-300 hover:shadow-sm bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-xl transition-all flex items-center gap-2 disabled:opacity-60"
+          className="px-4 py-2.5 rounded-xl border border-app-border bg-white text-text-muted hover:text-text-primary text-sm font-semibold hover:bg-app-hover transition-colors duration-150 flex items-center gap-2 disabled:opacity-60 active:scale-[0.98] shadow-sm"
         >
           <svg 
-            className={`w-4 h-4 transition-transform duration-500 ease-out group-hover:rotate-180 ${isRefreshing ? 'animate-spin text-red-600' : ''}`} 
+            className={`w-4 h-4 transition-transform duration-500 ease-out ${isRefreshing ? 'animate-spin text-accent' : ''}`} 
             fill="none" 
             stroke="currentColor" 
             strokeWidth="2"
@@ -98,11 +98,11 @@ function Alerts() {
       {loading && (
         <div className="space-y-4">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-28 bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex gap-4 animate-pulse">
-              <div className="w-10 h-10 bg-slate-200 rounded-full flex-shrink-0"></div>
+            <div key={i} className="h-28 bb-card p-6 flex gap-4 animate-pulse">
+              <div className="w-10 h-10 bg-slate-100 rounded-full flex-shrink-0"></div>
               <div className="flex-1 space-y-3 py-1">
-                <div className="h-4 bg-slate-200 rounded w-1/4"></div>
-                <div className="h-4 bg-slate-200 rounded w-3/4"></div>
+                <div className="h-4 bg-slate-150 rounded w-1/4"></div>
+                <div className="h-4 bg-slate-150 rounded w-3/4"></div>
               </div>
             </div>
           ))}
@@ -123,7 +123,7 @@ function Alerts() {
           </div>
           <button 
             onClick={fetchAlerts} 
-            className="px-4 py-2 bg-red-700 text-white text-sm font-medium rounded-xl hover:bg-red-800 transition-colors shadow-sm"
+            className="px-4 py-2 bg-accent text-white text-sm font-bold rounded-xl hover:bg-[#b91c1c] active:scale-95 transition-all shadow-sm"
           >
             Retry Connection
           </button>
@@ -132,13 +132,13 @@ function Alerts() {
 
       {/* Empty State */}
       {!loading && !error && alerts.length === 0 && (
-        <div className="bg-white border border-slate-100 rounded-2xl p-12 text-center flex flex-col items-center justify-center space-y-4 shadow-sm animate-smooth-fade-in">
-          <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center text-2xl transition-smooth hover:scale-110">
+        <div className="bb-card p-12 text-center flex flex-col items-center justify-center space-y-4 animate-smooth-fade-in">
+          <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center text-2xl transition-smooth hover:scale-110 shadow-sm">
             ✓
           </div>
           <div>
-            <h3 className="text-lg font-bold text-slate-900">System Fully Stable</h3>
-            <p className="text-sm text-slate-500 mt-1">There are currently no supply shortages or expired inventory alerts.</p>
+            <h3 className="text-lg font-bold text-text-primary">System Fully Stable</h3>
+            <p className="text-sm text-text-muted mt-1">There are currently no supply shortages or expired inventory alerts.</p>
           </div>
         </div>
       )}
@@ -148,10 +148,12 @@ function Alerts() {
         <div className="space-y-4">
           {alerts.map((row, idx) => {
             const id = row.AlertID || idx;
-            const style = getAlertCardStyle(row);
             const bloodGroup = row.blood_group || row.BloodType;
             const message = row.message || row.Message;
             const timestamp = row.timestamp || row.AlertDate || row.created_at;
+            const type = String(row.alert_type || row.AlertType || '').toUpperCase();
+            const msg = String(message || '').toLowerCase();
+            const isExpiry = type.includes('EXPIRE') || msg.includes('expir');
 
             return (
               <div 
@@ -159,28 +161,35 @@ function Alerts() {
                 style={{
                   animation: `smooth-slide-left 0.5s ease-out ${idx * 50}ms both`
                 }}
-                className={`border rounded-2xl p-6 shadow-sm flex items-start gap-4 transition-smooth hover:shadow-lg hover:scale-102 cursor-default ${style.cardBg}`}
+                className={[
+                  'border rounded-xl p-5 flex items-start gap-4 cursor-default shadow-sm transition-all hover:scale-[1.01]',
+                  isExpiry
+                    ? 'border-l-[3px] border-l-status-amber bg-[#fffbeb] border-amber-100'
+                    : 'border-l-[3px] border-l-status-red bg-[#fff5f5] border-red-100',
+                ].join(' ')}
               >
-                <div className="text-2xl mt-0.5 flex-shrink-0">
-                  {style.icon}
+                <div className="text-[20px] mt-0.5 flex-shrink-0">
+                  {isExpiry ? '⚠️' : '🚨'}
                 </div>
                 
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="flex items-center gap-2.5">
-                      <h4 className="font-bold text-base tracking-tight">{style.title}</h4>
+                      <h4 className={`font-bold text-[14px] tracking-tight ${isExpiry ? 'text-amber-800' : 'text-red-800'}`}>
+                        {isExpiry ? 'Expiry Alert' : 'Critical Alert'}
+                      </h4>
                       {bloodGroup && (
-                        <span className={`text-xs px-2.5 py-0.5 font-bold rounded-full transition-smooth ${style.badgeBg}`}>
+                        <span className="text-xs px-2.5 py-0.5 font-bold rounded-full border border-app-border bg-white text-text-primary shadow-sm">
                           Group {bloodGroup}
                         </span>
                       )}
                     </div>
-                    <span className="text-xs font-semibold opacity-70">
+                    <span className="text-[11px] font-mono text-text-muted">
                       {formatAlertDate(timestamp)}
                     </span>
                   </div>
                   
-                  <p className="text-sm font-medium mt-2 leading-relaxed opacity-90">
+                  <p className="text-[14px] mt-2 leading-relaxed text-text-primary font-medium">
                     {message}
                   </p>
                 </div>

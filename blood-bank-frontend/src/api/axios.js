@@ -8,4 +8,7 @@ const api = axios.create({
   }
 });
 
+/** Nearby hospitals may call external map APIs; allow more time than default. */
+export const NEARBY_HOSPITALS_TIMEOUT_MS = 15000;
+
 export default api;

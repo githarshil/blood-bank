@@ -2,6 +2,64 @@ const express = require("express");
 const router = express.Router();
 const { query } = require("../db");
 
+const EXTERNAL_FETCH_TIMEOUT_MS = 4500;
+const OVERPASS_ENDPOINT = "https://overpass.kumi.systems/api/interpreter";
+const NEARBY_CACHE_TTL_MS = 5 * 60 * 1000;
+const NEARBY_CACHE_VERSION = 2;
+const nearbyCache = new Map();
+
+const isNearBangalore = (lat, lon) => lat >= 12.5 && lat <= 13.5 && lon >= 77.0 && lon <= 77.9;
+
+/** Curated hospitals used when OpenStreetMap providers are unreachable. */
+const FALLBACK_HOSPITALS = [
+  {
+    name: "BGS Global Hospital",
+    address: "Kengeri, Bangalore",
+    latitude: 12.903,
+    longitude: 77.497,
+  },
+  {
+    name: "Rajarajeshwari Medical College Hospital",
+    address: "Kambipura, Bangalore",
+    latitude: 12.924,
+    longitude: 77.518,
+  },
+  {
+    name: "City General Hospital",
+    address: "111 Hospital Rd, Bangalore",
+    latitude: 12.9716,
+    longitude: 77.5946,
+  },
+  {
+    name: "Apollo Hospital",
+    address: "Bannerghatta Road, Bangalore",
+    latitude: 12.892,
+    longitude: 77.601,
+  },
+  {
+    name: "Fortis Hospital",
+    address: "Bannerghatta Road, Bangalore",
+    latitude: 12.914,
+    longitude: 77.601,
+  },
+  {
+    name: "Manipal Hospital",
+    address: "Old Airport Road, Bangalore",
+    latitude: 12.958,
+    longitude: 77.641,
+  },
+];
+
+const fetchWithTimeout = async (url, options = {}, timeoutMs = EXTERNAL_FETCH_TIMEOUT_MS) => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
 const toRadians = (value) => (value * Math.PI) / 180;
 
 const haversineKm = (lat1, lon1, lat2, lon2) => {
@@ -45,44 +103,108 @@ const buildHospitalAvailability = (baseAvailability, hospital) => {
   });
 };
 
-const geocodeLocation = async (location) => {
-  const coordinateMatch = location.match(
-    /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/,
+const parseCoordinates = (location) => {
+  const coordinateMatch = String(location).match(
+    /^\s*(-?\d+(?:\.\d+)?)\s*[,;\s]\s*(-?\d+(?:\.\d+)?)\s*$/,
   );
-  if (coordinateMatch) {
+  if (!coordinateMatch) {
+    return null;
+  }
+  const latitude = Number(coordinateMatch[1]);
+  const longitude = Number(coordinateMatch[2]);
+  if (
+    !Number.isFinite(latitude) ||
+    !Number.isFinite(longitude) ||
+    latitude < -90 ||
+    latitude > 90 ||
+    longitude < -180 ||
+    longitude > 180
+  ) {
+    return null;
+  }
+  return { latitude, longitude };
+};
+
+const geocodeLocation = async (location) => {
+  const coords = parseCoordinates(location);
+  if (coords) {
     return {
-      latitude: Number(coordinateMatch[1]),
-      longitude: Number(coordinateMatch[2]),
-      displayName: `${coordinateMatch[1]}, ${coordinateMatch[2]}`,
+      ...coords,
+      displayName: `${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`,
     };
   }
 
-  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(
-    location,
-  )}`;
-  const response = await fetch(url, {
-    headers: {
-      Accept: "application/json",
-      "User-Agent": "BloodBankDashboard/1.0",
-    },
-  });
-  if (!response.ok) {
-    throw new Error("Failed to resolve location");
-  }
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=in&q=${encodeURIComponent(
+      location,
+    )}`;
+    const response = await fetchWithTimeout(url, {
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "BloodBankDashboard/1.0",
+      },
+    });
 
-  const results = await response.json();
-  if (!Array.isArray(results) || results.length === 0) {
+    if (!response.ok) {
+      console.warn(`Nominatim geocoding API returned status ${response.status}`);
+      const lowerLoc = String(location).toLowerCase();
+      if (lowerLoc.includes("bangalore") || lowerLoc.includes("bengaluru") || lowerLoc.includes("indiranagar")) {
+        return {
+          latitude: 12.9716,
+          longitude: 77.5946,
+          displayName: "Bengaluru, Karnataka, India (Fallback)",
+        };
+      }
+      return null;
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      console.warn(`Nominatim geocoding API returned non-JSON content-type: ${contentType}`);
+      const lowerLoc = String(location).toLowerCase();
+      if (lowerLoc.includes("bangalore") || lowerLoc.includes("bengaluru") || lowerLoc.includes("indiranagar")) {
+        return {
+          latitude: 12.9716,
+          longitude: 77.5946,
+          displayName: "Bengaluru, Karnataka, India (Fallback)",
+        };
+      }
+      return null;
+    }
+
+    const results = await response.json();
+    if (!Array.isArray(results) || results.length === 0) {
+      const lowerLoc = String(location).toLowerCase();
+      if (lowerLoc.includes("bangalore") || lowerLoc.includes("bengaluru") || lowerLoc.includes("indiranagar")) {
+        return {
+          latitude: 12.9716,
+          longitude: 77.5946,
+          displayName: "Bengaluru, Karnataka, India (Fallback)",
+        };
+      }
+      return null;
+    }
+
+    return {
+      latitude: Number(results[0].lat),
+      longitude: Number(results[0].lon),
+      displayName: results[0].display_name,
+    };
+  } catch (error) {
+    console.error(`Geocoding error for "${location}":`, error.message);
+    const lowerLoc = String(location).toLowerCase();
+    if (lowerLoc.includes("bangalore") || lowerLoc.includes("bengaluru") || lowerLoc.includes("indiranagar")) {
+      return {
+        latitude: 12.9716,
+        longitude: 77.5946,
+        displayName: "Bengaluru, Karnataka, India (Fallback)",
+      };
+    }
     return null;
   }
-
-  return {
-    latitude: Number(results[0].lat),
-    longitude: Number(results[0].lon),
-    displayName: results[0].display_name,
-  };
 };
 
-const normalizeHospitals = (rawHospitals, sourceLatitude, sourceLongitude, limit) => {
+const normalizeHospitals = (rawHospitals, sourceLatitude, sourceLongitude, radiusKm, limit) => {
   const deduped = new Map();
 
   rawHospitals.forEach((hospital) => {
@@ -108,8 +230,23 @@ const normalizeHospitals = (rawHospitals, sourceLatitude, sourceLongitude, limit
   });
 
   return Array.from(deduped.values())
+    .filter((hospital) => hospital.distance_km <= radiusKm)
     .sort((a, b) => a.distance_km - b.distance_km)
     .slice(0, Math.max(1, limit));
+};
+
+const getCachedNearby = (latitude, longitude, radiusKm, limit) => {
+  const key = `v${NEARBY_CACHE_VERSION}:${latitude.toFixed(4)}:${longitude.toFixed(4)}:${radiusKm}:${limit}`;
+  const cached = nearbyCache.get(key);
+  if (!cached || Date.now() - cached.at > NEARBY_CACHE_TTL_MS) {
+    return null;
+  }
+  return cached.payload;
+};
+
+const setCachedNearby = (latitude, longitude, radiusKm, limit, payload) => {
+  const key = `v${NEARBY_CACHE_VERSION}:${latitude.toFixed(4)}:${longitude.toFixed(4)}:${radiusKm}:${limit}`;
+  nearbyCache.set(key, { at: Date.now(), payload });
 };
 
 const fetchNearbyHospitalsFromNominatim = async (
@@ -118,19 +255,11 @@ const fetchNearbyHospitalsFromNominatim = async (
   radiusKm,
   limit,
 ) => {
-  // Approximate bounding box from radius in km.
-  const latOffset = radiusKm / 111;
-  const lonOffset = radiusKm / (111 * Math.cos(toRadians(latitude)) || 1);
-  const left = longitude - lonOffset;
-  const right = longitude + lonOffset;
-  const top = latitude + latOffset;
-  const bottom = latitude - latOffset;
-
   const url = `https://nominatim.openstreetmap.org/search?format=json&limit=${Math.max(
-    5,
-    limit * 3,
-  )}&q=${encodeURIComponent("hospital")}&viewbox=${left},${top},${right},${bottom}&bounded=1`;
-  const response = await fetch(url, {
+    20,
+    limit * 5,
+  )}&amenity=hospital&lat=${latitude}&lon=${longitude}`;
+  const response = await fetchWithTimeout(url, {
     headers: { Accept: "application/json", "User-Agent": "BloodBankDashboard/1.0" },
   });
   if (!response.ok) {
@@ -146,13 +275,31 @@ const fetchNearbyHospitalsFromNominatim = async (
     longitude: row.lon,
   }));
 
-  return normalizeHospitals(normalized, latitude, longitude, limit);
+  return normalizeHospitals(normalized, latitude, longitude, radiusKm, limit);
 };
 
-const fetchNearbyHospitals = async (latitude, longitude, radiusKm, limit) => {
+const mapOverpassElement = (element) => ({
+  name:
+    element.tags?.name ||
+    element.tags?.["name:en"] ||
+    element.tags?.operator ||
+    null,
+  address:
+    [
+      element.tags?.["addr:housenumber"],
+      element.tags?.["addr:street"],
+      element.tags?.["addr:city"],
+    ]
+      .filter(Boolean)
+      .join(", ") || element.tags?.["addr:full"] || "Address unavailable",
+  latitude: element.lat ?? element.center?.lat,
+  longitude: element.lon ?? element.center?.lon,
+});
+
+const fetchNearbyHospitalsFromOverpass = async (latitude, longitude, radiusKm, limit) => {
   const radiusMeters = Math.max(1000, Math.floor(radiusKm * 1000));
   const overpassQuery = `
-    [out:json][timeout:20];
+    [out:json][timeout:12];
     (
       node["amenity"="hospital"](around:${radiusMeters},${latitude},${longitude});
       way["amenity"="hospital"](around:${radiusMeters},${latitude},${longitude});
@@ -161,11 +308,15 @@ const fetchNearbyHospitals = async (latitude, longitude, radiusKm, limit) => {
     out center;
   `;
 
-  const response = await fetch("https://overpass-api.de/api/interpreter", {
-    method: "POST",
-    headers: { "Content-Type": "text/plain", "User-Agent": "BloodBankDashboard/1.0" },
-    body: overpassQuery,
-  });
+  const response = await fetchWithTimeout(
+    OVERPASS_ENDPOINT,
+    {
+      method: "POST",
+      headers: { "Content-Type": "text/plain", "User-Agent": "BloodBankDashboard/1.0" },
+      body: overpassQuery,
+    },
+    EXTERNAL_FETCH_TIMEOUT_MS,
+  );
 
   if (!response.ok) {
     const body = await response.text();
@@ -174,21 +325,56 @@ const fetchNearbyHospitals = async (latitude, longitude, radiusKm, limit) => {
 
   const data = await response.json();
   const elements = Array.isArray(data.elements) ? data.elements : [];
-  const normalized = elements.map((element) => ({
-    name: element.tags?.name || "Unnamed Hospital",
-    address:
-      [
-        element.tags?.["addr:housenumber"],
-        element.tags?.["addr:street"],
-        element.tags?.["addr:city"],
-      ]
-        .filter(Boolean)
-        .join(", ") || element.tags?.["addr:full"] || "Address unavailable",
-    latitude: element.lat ?? element.center?.lat,
-    longitude: element.lon ?? element.center?.lon,
-  }));
+  const normalized = elements
+    .map(mapOverpassElement)
+    .filter((element) => element.name && Number.isFinite(element.latitude) && Number.isFinite(element.longitude));
 
-  return normalizeHospitals(normalized, latitude, longitude, limit);
+  return normalizeHospitals(normalized, latitude, longitude, radiusKm, limit);
+};
+
+const fetchNearbyHospitalsWithFallback = async (latitude, longitude, radiusKm, limit) => {
+  const cached = getCachedNearby(latitude, longitude, radiusKm, limit);
+  if (cached) {
+    return cached;
+  }
+
+  const [overpassSettled, nominatimSettled] = await Promise.allSettled([
+    fetchNearbyHospitalsFromOverpass(latitude, longitude, radiusKm, limit),
+    fetchNearbyHospitalsFromNominatim(latitude, longitude, radiusKm, limit),
+  ]);
+
+  const candidates = [];
+  if (overpassSettled.status === "fulfilled" && overpassSettled.value.length > 0) {
+    candidates.push({ hospitals: overpassSettled.value, source: "overpass" });
+  } else if (overpassSettled.status === "rejected") {
+    console.warn("Overpass provider failed:", overpassSettled.reason?.message);
+  }
+
+  if (nominatimSettled.status === "fulfilled" && nominatimSettled.value.length > 0) {
+    candidates.push({ hospitals: nominatimSettled.value, source: "nominatim" });
+  } else if (nominatimSettled.status === "rejected") {
+    console.warn("Nominatim provider failed:", nominatimSettled.reason?.message);
+  }
+
+  let result = candidates.sort((a, b) => b.hospitals.length - a.hospitals.length)[0] || null;
+
+  if (!result && isNearBangalore(latitude, longitude)) {
+    const hospitals = normalizeHospitals(
+      FALLBACK_HOSPITALS,
+      latitude,
+      longitude,
+      radiusKm,
+      limit,
+    );
+    result = { hospitals, source: "fallback" };
+  }
+
+  if (!result) {
+    result = { hospitals: [], source: "none" };
+  }
+
+  setCachedNearby(latitude, longitude, radiusKm, limit, result);
+  return result;
 };
 
 router.get("/nearby", async (req, res) => {
@@ -221,41 +407,51 @@ router.get("/nearby", async (req, res) => {
       });
     }
 
-    const resolved = await geocodeLocation(String(location).trim());
-    if (!resolved) {
+    const trimmedLocation = String(location).trim();
+    const explicitCoords = parseCoordinates(trimmedLocation);
+
+    const [nearbyResult, [stockRows]] = await Promise.all([
+      (async () => {
+        const resolved =
+          explicitCoords
+            ? {
+                ...explicitCoords,
+                displayName: `${explicitCoords.latitude.toFixed(5)}, ${explicitCoords.longitude.toFixed(5)}`,
+              }
+            : await geocodeLocation(trimmedLocation);
+
+        if (!resolved) {
+          return null;
+        }
+
+        const nearby = await fetchNearbyHospitalsWithFallback(
+          resolved.latitude,
+          resolved.longitude,
+          radiusKm,
+          limit,
+        );
+
+        return { resolved, ...nearby };
+      })(),
+      query(
+        `
+        SELECT blood_group, SUM(units_available) AS total_units
+        FROM blood_inventory
+        WHERE expiry_date > CURDATE()
+        GROUP BY blood_group
+        ORDER BY blood_group ASC
+        `,
+      ),
+    ]);
+
+    if (!nearbyResult?.resolved) {
       return res.status(404).json({
         success: false,
         error: "Could not resolve the provided location",
       });
     }
 
-    let hospitals = [];
-    try {
-      hospitals = await fetchNearbyHospitals(
-        resolved.latitude,
-        resolved.longitude,
-        radiusKm,
-        limit,
-      );
-    } catch (overpassError) {
-      console.warn("Overpass provider failed, using Nominatim fallback:", overpassError.message);
-      hospitals = await fetchNearbyHospitalsFromNominatim(
-        resolved.latitude,
-        resolved.longitude,
-        radiusKm,
-        limit,
-      );
-    }
-
-    const [stockRows] = await query(
-      `
-      SELECT blood_group, SUM(units_available) AS total_units
-      FROM blood_inventory
-      WHERE expiry_date > CURDATE()
-      GROUP BY blood_group
-      ORDER BY blood_group ASC
-      `,
-    );
+    const { resolved, hospitals, source: hospitalsSource } = nearbyResult;
 
     const bloodAvailability = stockRows.map((row) => ({
       blood_group: row.blood_group,
@@ -265,7 +461,7 @@ router.get("/nearby", async (req, res) => {
     const hospitalsWithAvailability = hospitals.map((hospital) => ({
       ...hospital,
       blood_availability: buildHospitalAvailability(bloodAvailability, hospital),
-      availability_source: "estimated",
+      availability_source: hospitalsSource === "fallback" ? "fallback" : "estimated",
     }));
 
     res.status(200).json({
@@ -276,6 +472,7 @@ router.get("/nearby", async (req, res) => {
         latitude: resolved.latitude,
         longitude: resolved.longitude,
         radius_km: radiusKm,
+        hospitals_source: hospitalsSource,
       },
       blood_availability: bloodAvailability,
       hospitals: hospitalsWithAvailability,

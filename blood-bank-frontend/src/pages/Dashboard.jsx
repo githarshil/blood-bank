@@ -1,31 +1,34 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import api from '../api/axios';
+import api, { NEARBY_HOSPITALS_TIMEOUT_MS } from '../api/axios';
 import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from 'react-leaflet';
 import ThreeDripChamber from '../components/ThreeDripChamber';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
-function FitHospitalsBounds({ hospitals }) {
+function FitHospitalsBounds({ hospitals, searchCenter }) {
   const map = useMap();
 
   useEffect(() => {
-    if (!hospitals || hospitals.length === 0) return;
-    const bounds = hospitals
+    const bounds = [];
+    if (searchCenter?.latitude != null && searchCenter?.longitude != null) {
+      bounds.push([searchCenter.latitude, searchCenter.longitude]);
+    }
+    (hospitals || [])
       .filter((h) => Number.isFinite(h.latitude) && Number.isFinite(h.longitude))
-      .map((h) => [h.latitude, h.longitude]);
+      .forEach((h) => bounds.push([h.latitude, h.longitude]));
+
+    if (bounds.length === 0) return;
 
     if (bounds.length === 1) {
       map.setView(bounds[0], 13, { animate: false });
       return;
     }
 
-    if (bounds.length > 1) {
-      map.fitBounds(bounds, {
-        padding: [35, 35],
-        animate: false,
-      });
-    }
-  }, [hospitals, map]);
+    map.fitBounds(bounds, {
+      padding: [35, 35],
+      animate: false,
+    });
+  }, [hospitals, searchCenter, map]);
 
   return null;
 }
@@ -45,6 +48,9 @@ function Dashboard() {
   const [isFindingHospitals, setIsFindingHospitals] = useState(false);
   const [hospitalSearchError, setHospitalSearchError] = useState('');
   const [nearestHospitals, setNearestHospitals] = useState(() => {
+    const savedKey = sessionStorage.getItem('dashboard_hospitalsSearchKey') || '';
+    const currentKey = sessionStorage.getItem('dashboard_locationQuery') || '';
+    if (savedKey !== currentKey) return [];
     const saved = sessionStorage.getItem('dashboard_nearestHospitals');
     try {
       return saved ? JSON.parse(saved) : [];
@@ -52,7 +58,21 @@ function Dashboard() {
       return [];
     }
   });
+  const [searchCenter, setSearchCenter] = useState(() => {
+    const savedKey = sessionStorage.getItem('dashboard_hospitalsSearchKey') || '';
+    const currentKey = sessionStorage.getItem('dashboard_locationQuery') || '';
+    if (savedKey !== currentKey) return null;
+    const saved = sessionStorage.getItem('dashboard_searchCenter');
+    try {
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [resolvedLocationName, setResolvedLocationName] = useState(() => {
+    const savedKey = sessionStorage.getItem('dashboard_hospitalsSearchKey') || '';
+    const currentKey = sessionStorage.getItem('dashboard_locationQuery') || '';
+    if (savedKey !== currentKey) return '';
     return sessionStorage.getItem('dashboard_resolvedLocationName') || '';
   });
   const [selectedHospitalIndex, setSelectedHospitalIndex] = useState(() => {
@@ -67,6 +87,14 @@ function Dashboard() {
   useEffect(() => {
     sessionStorage.setItem('dashboard_nearestHospitals', JSON.stringify(nearestHospitals));
   }, [nearestHospitals]);
+
+  useEffect(() => {
+    if (searchCenter) {
+      sessionStorage.setItem('dashboard_searchCenter', JSON.stringify(searchCenter));
+    } else {
+      sessionStorage.removeItem('dashboard_searchCenter');
+    }
+  }, [searchCenter]);
 
   useEffect(() => {
     sessionStorage.setItem('dashboard_resolvedLocationName', resolvedLocationName);
@@ -177,13 +205,17 @@ function Dashboard() {
     try {
       setIsFindingHospitals(true);
       setHospitalSearchError('');
+      setNearestHospitals([]);
+      setSearchCenter(null);
+      setResolvedLocationName('');
 
       const response = await api.get('/api/hospitals/nearby', {
         params: {
           location: trimmedLocation,
-          radius_km: 10,
-          limit: 5
-        }
+          radius_km: 15,
+          limit: 8
+        },
+        timeout: NEARBY_HOSPITALS_TIMEOUT_MS
       });
 
       if (!response.data?.success) {
@@ -192,6 +224,13 @@ function Dashboard() {
 
       setNearestHospitals(response.data.hospitals || []);
       setResolvedLocationName(response.data.search?.resolved_name || trimmedLocation);
+      if (response.data.search?.latitude != null && response.data.search?.longitude != null) {
+        setSearchCenter({
+          latitude: Number(response.data.search.latitude),
+          longitude: Number(response.data.search.longitude),
+        });
+      }
+      sessionStorage.setItem('dashboard_hospitalsSearchKey', trimmedLocation);
       setSelectedHospitalIndex(null);
     } catch (err) {
       let message = 'Unable to fetch nearby hospitals.';
@@ -230,7 +269,7 @@ function Dashboard() {
           geoError?.message || 'Unable to access your current location.',
         );
       },
-      { enableHighAccuracy: true, timeout: 10000 },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
     );
   };
 
@@ -299,9 +338,11 @@ function Dashboard() {
 
   const mapCenter = selectedHospital
     ? [selectedHospital.latitude, selectedHospital.longitude]
-    : nearestHospitals.length > 0
-      ? [nearestHospitals[0].latitude, nearestHospitals[0].longitude]
-      : [12.9716, 77.5946];
+    : searchCenter
+      ? [searchCenter.latitude, searchCenter.longitude]
+      : nearestHospitals.length > 0
+        ? [nearestHospitals[0].latitude, nearestHospitals[0].longitude]
+        : [12.9716, 77.5946];
 
   useLayoutEffect(() => {
     const grid = hospitalsGridRef.current;
@@ -582,11 +623,27 @@ function Dashboard() {
                 keyboard={false}
                 attributionControl={false}
               >
-                <FitHospitalsBounds hospitals={nearestHospitals} />
+                <FitHospitalsBounds hospitals={nearestHospitals} searchCenter={searchCenter} />
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
+                {searchCenter && (
+                  <CircleMarker
+                    center={[searchCenter.latitude, searchCenter.longitude]}
+                    radius={7}
+                    pathOptions={{
+                      color: '#2563eb',
+                      weight: 2,
+                      fillColor: '#3b82f6',
+                      fillOpacity: 1,
+                    }}
+                  >
+                    <Tooltip direction="top" offset={[0, -6]}>
+                      Your search location
+                    </Tooltip>
+                  </CircleMarker>
+                )}
                 {nearestHospitals.map((hospital, idx) => (
                   <CircleMarker
                     key={`pin-${hospital.name}-${idx}`}

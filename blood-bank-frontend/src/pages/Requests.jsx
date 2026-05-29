@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api from '../api/axios';
+import api, { NEARBY_HOSPITALS_TIMEOUT_MS } from '../api/axios';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const COMPATIBILITY_MAP = {
@@ -203,7 +203,8 @@ function Requests() {
     setIsFindingHospitals(true);
     try {
       const response = await api.get('/api/hospitals/nearby', {
-        params: { location: trimmedLocation, radius_km: 10, limit: 6 },
+        params: { location: trimmedLocation, radius_km: 15, limit: 8 },
+        timeout: NEARBY_HOSPITALS_TIMEOUT_MS,
       });
       if (!response.data?.success) {
         throw new Error('Unable to fetch nearby hospitals.');
